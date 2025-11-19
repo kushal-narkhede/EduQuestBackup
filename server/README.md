@@ -1,4 +1,4 @@
-# FBLA 2025 Backend (Node + Express + MongoDB)
+# EduQuest Backend (Node + Express + MongoDB)
 
 This lightweight API matches the Flutter app's RemoteApiClient contract so you can switch from local SQLite to MongoDB Atlas.
 

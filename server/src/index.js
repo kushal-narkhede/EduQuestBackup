@@ -67,7 +67,7 @@ const ensureUser = async (username) => {
 
 // Root endpoint to confirm backend is alive
 app.get('/', (req, res) => {
-  res.send('FBLA 2025 API is running!');
+  res.send('EduQuest API is running!');
 });
 
 // Health

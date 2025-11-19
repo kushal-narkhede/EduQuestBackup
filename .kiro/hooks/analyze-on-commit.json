@@ -1,0 +1,12 @@
+{
+  "name": "Analyze Code Before Commit",
+  "description": "Runs Flutter analyze before allowing commits",
+  "trigger": {
+    "type": "preCommit"
+  },
+  "action": {
+    "type": "command",
+    "command": "flutter analyze"
+  },
+  "enabled": true
+}

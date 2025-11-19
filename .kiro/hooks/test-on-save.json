@@ -1,0 +1,13 @@
+{
+  "name": "Run Flutter Tests on Save",
+  "description": "Automatically runs Flutter tests when Dart files are saved",
+  "trigger": {
+    "type": "onFileSave",
+    "filePattern": "**/*.dart"
+  },
+  "action": {
+    "type": "command",
+    "command": "flutter test"
+  },
+  "enabled": true
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Format Dart Code on Save",
+  "description": "Automatically formats Dart code when files are saved",
+  "trigger": {
+    "type": "onFileSave",
+    "filePattern": "**/*.dart"
+  },
+  "action": {
+    "type": "command",
+    "command": "dart format {{filePath}}"
+  },
+  "enabled": true
+}
