@@ -7,26 +7,18 @@ import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as excel;
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
-import 'package:html/dom.dart' as html_dom;
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:student_learning_app/helpers/frq_manager.dart';
-import 'package:student_learning_app/screens/browse_sets_screen.dart';
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'helpers/database_helper.dart';
 import 'data/questions.dart' as quiz;
-import 'screens/premade_sets_screen.dart';
-import 'data/premade_study_sets.dart' as premade;
 import 'package:student_learning_app/screens/quick_play_screen.dart';
 import 'package:student_learning_app/ai/bloc/chat_bloc.dart';
 import 'package:student_learning_app/ai/models/chat_message_model.dart';
-import 'screens/browse_sets_screen.dart';
-import 'helpers/frq_manager.dart';
+import 'package:student_learning_app/screens/browse_sets_screen.dart';
+import 'package:student_learning_app/helpers/frq_manager.dart';
 import 'screens/study_set_edit_screen.dart';
 import 'screens/modes/lightning_mode_screen.dart';
 import 'screens/modes/puzzle_quest_screen.dart';
@@ -683,7 +675,7 @@ class _FlappyBirdGameScreenState extends State<FlappyBirdGameScreen> {
             top: 50,
             left: 20,
             child: Text(
-              'Score: $score',
+              '${ThemeCopy.getScoreLabel(widget.currentTheme)}: $score',
               style: TextStyle(
                 fontSize: 24,
                 color: widget.currentTheme == 'beach'
@@ -751,6 +743,484 @@ class SpaceBackground extends StatelessWidget {
       ),
     );
   }
+}
+
+class HalloweenBackground extends StatefulWidget {
+  const HalloweenBackground({super.key});
+
+  @override
+  State<HalloweenBackground> createState() => _HalloweenBackgroundState();
+}
+
+class _HalloweenBackgroundState extends State<HalloweenBackground>
+    with TickerProviderStateMixin {
+  late final AnimationController _moonController;
+  late final AnimationController _fogController;
+  late final AnimationController _batController;
+  late final Listenable _mergedAnimation;
+  late final List<_BatParticle> _bats;
+  late final List<_LanternParticle> _lanterns;
+  late final List<_SparkParticle> _embers;
+
+  @override
+  void initState() {
+    super.initState();
+    final random = Random();
+    _moonController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 6))
+          ..repeat(reverse: true);
+    _fogController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 20))
+          ..repeat();
+    _batController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 12))
+          ..repeat();
+
+    _mergedAnimation =
+        Listenable.merge([_moonController, _fogController, _batController]);
+
+    _bats = List.generate(
+      5,
+      (index) => _BatParticle(
+        phase: random.nextDouble(),
+        speed: 0.6 + random.nextDouble() * 0.8,
+        startY: 0.1 + random.nextDouble() * 0.4,
+        amplitude: 0.02 + random.nextDouble() * 0.06,
+        size: 18 + random.nextDouble() * 18,
+      ),
+    );
+
+    _lanterns = List.generate(
+      3,
+      (index) => _LanternParticle(
+        alignmentX: -0.7 + index * 0.7 + random.nextDouble() * 0.2,
+        baseY: 0.58 + index * 0.08,
+        delay: random.nextDouble(),
+        scale: 0.85 + random.nextDouble() * 0.4,
+      ),
+    );
+
+    _embers = List.generate(
+      28,
+      (index) => _SparkParticle(
+        startX: random.nextDouble(),
+        startY: 0.72 + random.nextDouble() * 0.2,
+        speed: 0.3 + random.nextDouble() * 0.5,
+        size: 2 + random.nextDouble() * 2,
+        seed: random.nextDouble(),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _moonController.dispose();
+    _fogController.dispose();
+    _batController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _mergedAnimation,
+      builder: (context, _) {
+        final size = MediaQuery.of(context).size;
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF030008),
+                Color(0xFF12061C),
+                Color(0xFF210A2F),
+                Color(0xFF3A0E3E),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _HalloweenSkyPainter(
+                    moonGlow: _moonController.value,
+                    fogShift: _fogController.value,
+                  ),
+                ),
+              ),
+              ..._buildEmbers(size),
+              ..._buildBats(size),
+              ..._buildLanterns(size),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _HalloweenForegroundPainter(
+                    fogShift: _fogController.value,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildBats(Size size) {
+    return _bats.map((bat) {
+      final travel = (_batController.value * bat.speed + bat.phase) % 1.0;
+      final dx = size.width * (1 - travel);
+      final dy =
+          size.height * (bat.startY + sin(travel * 2 * pi) * bat.amplitude);
+      final flap = sin(travel * 2 * pi);
+
+      return Positioned(
+        left: dx,
+        top: dy,
+        child: Transform.rotate(
+          angle: flap * 0.15,
+          child: Opacity(
+            opacity: 0.45 + 0.55 * flap.abs(),
+            child: CustomPaint(
+              size: Size(bat.size, bat.size * 0.45),
+              painter: const _BatPainter(color: Color(0xFFF8E1FF)),
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildLanterns(Size size) {
+    return _lanterns.map((lantern) {
+      final sway = sin((_moonController.value + lantern.delay) * 2 * pi) * 0.1;
+      final floatOffset =
+          sin((_fogController.value + lantern.delay) * 2 * pi) * 10;
+      final dx = size.width * 0.5 + lantern.alignmentX * size.width * 0.45;
+      final dy = size.height * lantern.baseY + floatOffset;
+
+      return Positioned(
+        left: dx,
+        top: dy,
+        child: Transform.rotate(
+          angle: sway,
+          child: Container(
+            width: 46 * lantern.scale,
+            height: 58 * lantern.scale,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFF3B0), Color(0xFFFF7500)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFA000).withOpacity(0.6),
+                  blurRadius: 30,
+                  spreadRadius: 4,
+                ),
+              ],
+              border: Border.all(
+                color: Colors.deepPurple.shade900,
+                width: 1.2,
+              ),
+            ),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                width: 8 * lantern.scale,
+                height: 16 * lantern.scale,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2D112B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildEmbers(Size size) {
+    return _embers.map((ember) {
+      final travel = (_fogController.value * ember.speed + ember.seed) % 1.0;
+      final clamped = (ember.startY - travel * 0.35).clamp(0.45, 0.92);
+      final y = size.height * clamped;
+      final x =
+          size.width * ember.startX + sin((travel + ember.seed) * 2 * pi) * 24;
+
+      return Positioned(
+        left: x,
+        top: y,
+        child: Opacity(
+          opacity: (1 - travel).clamp(0.25, 1.0),
+          child: Container(
+            width: ember.size,
+            height: ember.size * 2,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFF59D), Color(0xFFFF7043)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+}
+
+class _BatParticle {
+  final double phase;
+  final double speed;
+  final double startY;
+  final double amplitude;
+  final double size;
+
+  _BatParticle({
+    required this.phase,
+    required this.speed,
+    required this.startY,
+    required this.amplitude,
+    required this.size,
+  });
+}
+
+class _LanternParticle {
+  final double alignmentX;
+  final double baseY;
+  final double delay;
+  final double scale;
+
+  _LanternParticle({
+    required this.alignmentX,
+    required this.baseY,
+    required this.delay,
+    required this.scale,
+  });
+}
+
+class _SparkParticle {
+  final double startX;
+  final double startY;
+  final double speed;
+  final double size;
+  final double seed;
+
+  _SparkParticle({
+    required this.startX,
+    required this.startY,
+    required this.speed,
+    required this.size,
+    required this.seed,
+  });
+}
+
+class _BatPainter extends CustomPainter {
+  final Color color;
+
+  const _BatPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+
+    final path = Path()
+      ..moveTo(0, size.height * 0.8)
+      ..quadraticBezierTo(
+          size.width * 0.15, 0, size.width * 0.35, size.height * 0.65)
+      ..quadraticBezierTo(size.width * 0.4, size.height * 0.95,
+          size.width * 0.5, size.height * 0.55)
+      ..quadraticBezierTo(size.width * 0.6, size.height * 0.95,
+          size.width * 0.65, size.height * 0.65)
+      ..quadraticBezierTo(size.width * 0.85, 0, size.width, size.height * 0.8)
+      ..quadraticBezierTo(
+          size.width * 0.7, size.height * 0.95, size.width * 0.5, size.height)
+      ..quadraticBezierTo(
+          size.width * 0.3, size.height * 0.95, 0, size.height * 0.8)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BatPainter oldDelegate) =>
+      color != oldDelegate.color;
+}
+
+class _HalloweenSkyPainter extends CustomPainter {
+  final double moonGlow;
+  final double fogShift;
+
+  const _HalloweenSkyPainter({
+    required this.moonGlow,
+    required this.fogShift,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset moonCenter = Offset(size.width * 0.78, size.height * 0.18);
+    final double moonRadius = size.width * 0.18;
+
+    final Paint moonPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFFFFF8E1).withOpacity(0.7 + moonGlow * 0.3),
+          const Color(0xFFFFD180).withOpacity(0.35),
+          Colors.transparent,
+        ],
+        stops: const [0, 0.45, 1],
+      ).createShader(Rect.fromCircle(center: moonCenter, radius: moonRadius));
+    canvas.drawCircle(moonCenter, moonRadius, moonPaint);
+
+    final Paint craterPaint = Paint()
+      ..color = const Color(0xFFE4C17A).withOpacity(0.6);
+    for (int i = 0; i < 4; i++) {
+      final double angle = (i / 4) * 2 * pi;
+      canvas.drawCircle(
+        moonCenter.translate(
+          cos(angle) * moonRadius * 0.35,
+          sin(angle) * moonRadius * 0.25,
+        ),
+        moonRadius * (0.08 + i * 0.02),
+        craterPaint,
+      );
+    }
+
+    final Path ridge = Path()
+      ..moveTo(0, size.height * 0.58)
+      ..quadraticBezierTo(size.width * 0.2, size.height * 0.52,
+          size.width * 0.35, size.height * 0.58)
+      ..quadraticBezierTo(size.width * 0.5, size.height * 0.64,
+          size.width * 0.65, size.height * 0.54)
+      ..quadraticBezierTo(
+          size.width * 0.8, size.height * 0.5, size.width, size.height * 0.6)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+
+    final Paint ridgePaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          const Color(0xFF0E0316).withOpacity(0.9),
+          const Color(0xFF1C0725).withOpacity(0.7),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(
+          Rect.fromLTWH(0, size.height * 0.45, size.width, size.height * 0.4));
+    canvas.drawPath(ridge, ridgePaint);
+
+    final Paint fogPaint = Paint()
+      ..color = const Color(0xFFB39DDB).withOpacity(0.05);
+    for (int i = 0; i < 3; i++) {
+      final double shift = (fogShift + i * 0.25) % 1.0;
+      final Rect fogRect = Rect.fromLTWH(
+        -size.width + shift * size.width * 2,
+        size.height * (0.32 + i * 0.08),
+        size.width * 1.9,
+        size.height * 0.25,
+      );
+      canvas.drawOval(fogRect, fogPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HalloweenSkyPainter oldDelegate) {
+    return moonGlow != oldDelegate.moonGlow || fogShift != oldDelegate.fogShift;
+  }
+}
+
+class _HalloweenForegroundPainter extends CustomPainter {
+  final double fogShift;
+
+  const _HalloweenForegroundPainter({required this.fogShift});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Path hill = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(0, size.height * 0.78)
+      ..quadraticBezierTo(size.width * 0.2, size.height * 0.65,
+          size.width * 0.35, size.height * 0.78)
+      ..quadraticBezierTo(size.width * 0.55, size.height * 0.9,
+          size.width * 0.7, size.height * 0.74)
+      ..quadraticBezierTo(
+          size.width * 0.85, size.height * 0.68, size.width, size.height * 0.8)
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    final Paint hillPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          const Color(0xFF0D0214),
+          const Color(0xFF1A0322),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(
+          Rect.fromLTWH(0, size.height * 0.6, size.width, size.height * 0.4));
+    canvas.drawPath(hill, hillPaint);
+
+    final Paint glowPaint = Paint()
+      ..color = const Color(0xFFFF6D00)
+          .withOpacity(0.2 + 0.15 * sin(fogShift * 2 * pi));
+    for (int i = 0; i < 4; i++) {
+      final double x = size.width * (0.15 + i * 0.25);
+      final double y = size.height * 0.82;
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(x, y), width: 60, height: 28),
+        glowPaint,
+      );
+    }
+
+    final Paint mistPaint = Paint()
+      ..color = const Color(0xFFB388FF).withOpacity(0.05);
+    for (int i = 0; i < 2; i++) {
+      final double shift = (fogShift + i * 0.3) % 1.0;
+      final Rect mistRect = Rect.fromLTWH(
+        -size.width + shift * size.width * 2,
+        size.height * (0.74 + i * 0.06),
+        size.width * 1.8,
+        size.height * 0.2,
+      );
+      canvas.drawOval(mistRect, mistPaint);
+    }
+
+    final Paint runePaint = Paint()
+      ..color = const Color(0xFFFFC400)
+          .withOpacity(0.25 + 0.2 * sin((fogShift + 0.3) * 2 * pi))
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final Path rune = Path()
+      ..moveTo(size.width * 0.1, size.height * 0.86)
+      ..cubicTo(
+        size.width * 0.22,
+        size.height * (0.82 - 0.03 * sin(fogShift * 2 * pi)),
+        size.width * 0.38,
+        size.height * 0.9,
+        size.width * 0.5,
+        size.height * 0.83,
+      )
+      ..cubicTo(
+        size.width * 0.62,
+        size.height * 0.78,
+        size.width * 0.82,
+        size.height * 0.9,
+        size.width * 0.9,
+        size.height * 0.86,
+      );
+    canvas.drawPath(rune, runePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HalloweenForegroundPainter oldDelegate) =>
+      fogShift != oldDelegate.fogShift;
 }
 
 class BeachBackground extends StatelessWidget {
@@ -828,8 +1298,8 @@ Widget getBackgroundForTheme(String theme) {
       return const _ImageBackground('assets/images/arctic.png');
     case 'crystal':
       return const _ImageBackground('assets/images/glass.png');
-    case 'volcano':
-      return const _ImageBackground('assets/images/volcano.png');
+    case 'halloween':
+      return const HalloweenBackground();
     case 'space':
     default:
       return const SpaceBackground();
@@ -838,6 +1308,12 @@ Widget getBackgroundForTheme(String theme) {
 
 // Theme colors helper
 class ThemeColors {
+  static final List<List<Color>> _halloweenCardPalettes = [
+    [const Color(0xFF2B0A3D), const Color(0xFF120424)],
+    [const Color(0xFF3F0E4F), const Color(0xFF0B0016)],
+    [const Color(0xFF1C0027), const Color(0xFF0C0016)],
+  ];
+
   static SystemUiOverlayStyle getOverlayStyle(String theme) {
     // For bright backgrounds, use dark icons; for dark/image backgrounds, use light icons
     switch (theme) {
@@ -849,7 +1325,7 @@ class ThemeColors {
           systemNavigationBarColor: Colors.transparent,
         );
       case 'forest':
-      case 'volcano':
+      case 'halloween':
       case 'space':
       default:
         return SystemUiOverlayStyle.light.copyWith(
@@ -858,14 +1334,15 @@ class ThemeColors {
         );
     }
   }
+
   static Color getPrimaryColor(String theme) {
     switch (theme) {
       case 'beach':
         return const Color(0xFF4DD0E1); // Turquoise from ocean
       case 'forest':
         return const Color(0xFF2E7D32);
-      case 'volcano':
-        return const Color(0xFFD32F2F); // Lava red
+      case 'halloween':
+        return const Color(0xFF1A0B2E); // Midnight violet
       case 'arctic':
         return const Color(0xFF81D4FA); // Icy blue
       case 'crystal':
@@ -882,8 +1359,8 @@ class ThemeColors {
         return const Color(0xFFF5E6D3); // Sandy beige
       case 'forest':
         return const Color(0xFF4CAF50);
-      case 'volcano':
-        return const Color(0xFFFF7043); // Lava orange
+      case 'halloween':
+        return const Color(0xFFFF6F00); // Pumpkin glow
       case 'arctic':
         return const Color(0xFFB3E5FC); // Pale ice
       case 'crystal':
@@ -905,8 +1382,8 @@ class ThemeColors {
       case 'forest':
         // Use a warm off-white for forest so text pops over green image
         return const Color(0xFFF1F8EE);
-      case 'volcano':
-        return Colors.white; // Volcano image tends darker
+      case 'halloween':
+        return const Color(0xFFF8E1FF);
       case 'space':
       default:
         return Colors.white;
@@ -923,7 +1400,8 @@ class ThemeColors {
       case 'forest':
         // Slightly darker translucent backdrop for forest to improve readability
         return Colors.black.withOpacity(0.35);
-      case 'volcano':
+      case 'halloween':
+        return const Color(0xFF1B0035).withOpacity(0.65);
       case 'space':
       default:
         return Colors.white.withOpacity(0.20);
@@ -940,7 +1418,8 @@ class ThemeColors {
       case 'forest':
         // Greenish pill for forest
         return const Color(0xFF2E7D32).withOpacity(0.45);
-      case 'volcano':
+      case 'halloween':
+        return const Color(0xFFFFA000).withOpacity(0.45);
       case 'space':
       default:
         return Colors.white.withOpacity(0.30);
@@ -956,7 +1435,8 @@ class ThemeColors {
         return Colors.white;
       case 'forest':
         return Colors.white;
-      case 'volcano':
+      case 'halloween':
+        return Colors.white;
       case 'space':
       default:
         return getTextColor(theme);
@@ -969,10 +1449,11 @@ class ThemeColors {
         return const Color(0xFF26C6DA); // Bright turquoise
       case 'forest':
         return const Color(0xFF66BB6A);
-      case 'volcano':
-        return const Color(0xFFFF5722);
+      case 'halloween':
+        return const Color(0xFFFF6D00);
       case 'arctic':
-        return const Color(0xFF1F2937); // Dark slate for better contrast per request
+        return const Color(
+            0xFF1F2937); // Dark slate for better contrast per request
       case 'crystal':
         return const Color(0xFF4DD0E1);
       case 'space':
@@ -994,8 +1475,8 @@ class ThemeColors {
       case 'forest':
         // Use a subtle dark-green translucent card to contrast the forest image
         return const Color(0xFF04260F).withOpacity(0.55);
-      case 'volcano':
-        return Colors.white.withOpacity(0.08);
+      case 'halloween':
+        return const Color(0xFF120323).withOpacity(0.75);
       case 'space':
       default:
         return Colors.white.withOpacity(0.1); // Dark cards for space
@@ -1018,8 +1499,8 @@ class ThemeColors {
     switch (theme) {
       case 'beach':
         return const Color(0xFFFF8A65); // Coral from tropical flowers
-      case 'volcano':
-        return const Color(0xFFFF7043);
+      case 'halloween':
+        return const Color(0xFFFFC400);
       case 'arctic':
         return const Color(0xFF81D4FA);
       case 'crystal':
@@ -1083,6 +1564,106 @@ class ThemeColors {
         return getBeachGradient5();
     }
   }
+
+  static LinearGradient getHalloweenCardGradient(int variant) {
+    final palette =
+        _halloweenCardPalettes[variant % _halloweenCardPalettes.length];
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: palette,
+    );
+  }
+
+  static LinearGradient? getCardGradient(String theme, {int variant = 0}) {
+    switch (theme) {
+      case 'halloween':
+        return getHalloweenCardGradient(variant);
+      case 'beach':
+        return getBeachCardGradient();
+      default:
+        return null;
+    }
+  }
+
+  static LinearGradient? getButtonGradient(String theme) {
+    switch (theme) {
+      case 'halloween':
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFF6F00),
+            Color(0xFFFF8F3F),
+          ],
+        );
+      default:
+        return null;
+    }
+  }
+
+  static List<BoxShadow> getButtonShadows(String theme) {
+    switch (theme) {
+      case 'halloween':
+        return [
+          BoxShadow(
+            color: const Color(0xFFFF6F00).withOpacity(0.45),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: const Color(0xFF120323).withOpacity(0.6),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ];
+      default:
+        return [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ];
+    }
+  }
+}
+
+class ThemeCopy {
+  static String getGreeting(String theme, String username) {
+    if (theme == 'halloween') {
+      return 'Welcome to the Haunted Archives, $username!';
+    }
+    return 'Welcome, $username!';
+  }
+
+  static String getGreetingSubtitle(String theme) {
+    if (theme == 'halloween') {
+      return 'Summon spectral knowledge tonight.';
+    }
+    return "Let's learn something new today!";
+  }
+
+  static String getScoreLabel(String theme) {
+    if (theme == 'halloween') {
+      return 'Spooky Score';
+    }
+    return 'Score';
+  }
+
+  static String getStoreSubtitle(String theme) {
+    if (theme == 'halloween') {
+      return 'Stock up on enchanted curios for nightfall studies';
+    }
+    return 'Enhance your learning experience';
+  }
+
+  static String getStoreTitle(String theme) {
+    if (theme == 'halloween') {
+      return 'Haunted Curio Market';
+    }
+    return 'EduQuest Store';
+  }
 }
 
 class GameButton extends StatelessWidget {
@@ -1106,6 +1687,7 @@ class GameButton extends StatelessWidget {
     Color backgroundColor = ThemeColors.getCardColor(currentTheme);
     Color borderColor = ThemeColors.getButtonColor(currentTheme);
     Color textColor = ThemeColors.getTextColor(currentTheme);
+    final bool isHalloween = currentTheme == 'halloween';
 
     if (currentTheme == 'beach') {
       backgroundColor = Colors.white.withOpacity(0.9);
@@ -1127,29 +1709,50 @@ class GameButton extends StatelessWidget {
       textColor = Colors.white;
     }
 
+    final bool hasStateColor =
+        (isSelected && isCorrect != null) || isCorrect == true;
+    final bool useSpookySkin = isHalloween && !hasStateColor;
+    final borderRadius = BorderRadius.circular(10);
+
+    final button = ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: useSpookySkin ? Colors.transparent : backgroundColor,
+        shadowColor: useSpookySkin ? Colors.transparent : null,
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: borderRadius,
+          side: BorderSide(color: borderColor, width: 2),
+        ),
+        elevation: useSpookySkin ? 0 : 5,
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 16,
+          color: textColor,
+          fontWeight: FontWeight.bold,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+
     return Container(
       width: MediaQuery.of(context).size.width * 0.9,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(color: borderColor, width: 2),
-          ),
-          elevation: 5,
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 16,
-            color: textColor,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
+      decoration: useSpookySkin
+          ? BoxDecoration(
+              gradient: ThemeColors.getButtonGradient(currentTheme),
+              borderRadius: borderRadius,
+              boxShadow: ThemeColors.getButtonShadows(currentTheme),
+              border: Border.all(
+                color: ThemeColors.getAccentColor(currentTheme).withOpacity(
+                  isSelected ? 0.9 : 0.4,
+                ),
+                width: isSelected ? 2 : 1,
+              ),
+            )
+          : null,
+      child: button,
     );
   }
 }
@@ -1159,8 +1762,7 @@ class SignInPage extends StatefulWidget {
   _SignInPageState createState() => _SignInPageState();
 }
 
-class _SignInPageState extends State<SignInPage>
-    with SingleTickerProviderStateMixin {
+class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _dbHelper = DatabaseHelper();
@@ -1169,10 +1771,11 @@ class _SignInPageState extends State<SignInPage>
   bool _rememberAccount = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   late AnimationController _animationController;
+  late AnimationController _backgroundController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   bool _isLoading = false;
-  String _currentTheme = 'space';
+  String _currentTheme = 'halloween';
   bool _developerMode = false;
 
   @override
@@ -1180,13 +1783,17 @@ class _SignInPageState extends State<SignInPage>
     super.initState();
     _usernameController.addListener(_updateFormState);
     _passwordController.addListener(_updateFormState);
-    _loadSavedCredentials();
-    _loadSavedTheme();
 
+    // Initialize controllers first before any async operations that might trigger rebuilds
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
+
+    _backgroundController = AnimationController(
+      duration: const Duration(seconds: 12),
+      vsync: this,
+    )..repeat(reverse: true);
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -1206,6 +1813,10 @@ class _SignInPageState extends State<SignInPage>
     );
 
     _animationController.forward();
+
+    // Load saved data after controllers are initialized
+    _loadSavedCredentials();
+    _loadSavedTheme();
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -1220,7 +1831,7 @@ class _SignInPageState extends State<SignInPage>
   Future<void> _loadSavedTheme() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _currentTheme = prefs.getString('current_theme') ?? 'space';
+      _currentTheme = prefs.getString('current_theme') ?? 'halloween';
       _developerMode = prefs.getBool('developer_mode') ?? false;
     });
   }
@@ -1245,6 +1856,7 @@ class _SignInPageState extends State<SignInPage>
     _usernameController.dispose();
     _passwordController.dispose();
     _animationController.dispose();
+    _backgroundController.dispose();
     super.dispose();
   }
 
@@ -1373,137 +1985,49 @@ class _SignInPageState extends State<SignInPage>
   }
 
   Future<void> _showDeveloperPassDialog() async {
-    final TextEditingController devPasswordController = TextEditingController();
-    
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1D1E33),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
+    // Directly log into developer account without password
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Ensure demo account exists, then log into it
+      final exists = await _dbHelper.usernameExists('EduQuest');
+      if (!exists) {
+        await _dbHelper.addUser('EduQuest', 'eduquest');
+        // Optionally give starter points to demo account
+        await _dbHelper.updateUserPoints('EduQuest', 999999);
+      }
+      if (!mounted) return;
+
+      HapticFeedback.heavyImpact();
+      // Navigate straight to MainScreen as demo
+      Navigator.pushReplacement(
+        this.context,
+        CustomPageRoute(
+          page: MainScreen(username: 'EduQuest'),
+          routeName: '/home',
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(
+          content: Row(
             children: [
-              Icon(Icons.developer_mode, color: Colors.amber),
-              const SizedBox(width: 8),
-              const Text(
-                'Developer Pass',
-                style: TextStyle(color: Colors.white),
-              ),
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('Demo login failed: $e'),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Enter password to access the EduQuest demo account.',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: devPasswordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  prefixIcon: const Icon(Icons.lock, color: Colors.amber),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.amber,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (devPasswordController.text == 'eduquest') {
-                  // Ensure demo account exists, then log into it
-                  try {
-                    final exists = await _dbHelper.usernameExists('EduQuest');
-                    if (!exists) {
-                      await _dbHelper.addUser('EduQuest', 'eduquest');
-                      // Optionally give starter points to demo account
-                      await _dbHelper.updateUserPoints('EduQuest', 999999);
-                    }
-                    if (!mounted) return;
-                    Navigator.of(context).pop();
-                    // Navigate straight to MainScreen as demo
-                    Navigator.pushReplacement(
-                      this.context,
-                      MaterialPageRoute(
-                        builder: (_) => MainScreen(username: 'EduQuest'),
-                      ),
-                    );
-                  } catch (e) {
-                    if (!mounted) return;
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            const Icon(Icons.error_outline, color: Colors.white),
-                            const SizedBox(width: 12),
-                            Text('Demo login failed: $e'),
-                          ],
-                        ),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.white),
-                          const SizedBox(width: 12),
-                          const Text('Incorrect password'),
-                        ],
-                      ),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber,
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Enter'),
-            ),
-          ],
-        );
-      },
-    );
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -1511,7 +2035,7 @@ class _SignInPageState extends State<SignInPage>
     return Scaffold(
       body: Stack(
         children: [
-          getBackgroundForTheme(_currentTheme),
+          _HalloweenBackdrop(animation: _backgroundController),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -1532,9 +2056,11 @@ class _SignInPageState extends State<SignInPage>
                               height: 120,
                             ),
                             const SizedBox(height: 16),
-                            const Text(
-                              'Welcome to EduQuest',
-                              style: TextStyle(
+                            Text(
+                              _currentTheme == 'halloween'
+                                  ? 'Enter the Haunted Academy'
+                                  : 'Welcome to EduQuest',
+                              style: const TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -1542,7 +2068,9 @@ class _SignInPageState extends State<SignInPage>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Sign in to continue your journey',
+                              _currentTheme == 'halloween'
+                                  ? 'Sign in to begin your spectral studies'
+                                  : 'Sign in to continue your journey',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.white.withOpacity(0.7),
@@ -1675,48 +2203,67 @@ class _SignInPageState extends State<SignInPage>
                                 ),
                               )
                             else
-                              Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: _isFormValid
-                                        ? [
-                                            const Color(0xFF4facfe),
-                                            const Color(0xFF00f2fe)
-                                          ]
-                                        : [Colors.grey, Colors.grey.shade700],
+                              Builder(builder: (context) {
+                                final bool isSpooky =
+                                    _currentTheme == 'halloween';
+                                final Gradient enabledGradient = isSpooky
+                                    ? ThemeColors.getButtonGradient(
+                                        'halloween')!
+                                    : const LinearGradient(
+                                        colors: [
+                                          Color(0xFF4facfe),
+                                          Color(0xFF00f2fe)
+                                        ],
+                                      );
+                                final Gradient disabledGradient =
+                                    LinearGradient(colors: [
+                                  Colors.grey,
+                                  Colors.grey.shade700
+                                ]);
+                                final Gradient gradient = _isFormValid
+                                    ? enabledGradient
+                                    : disabledGradient;
+                                final List<BoxShadow> buttonShadows =
+                                    _isFormValid
+                                        ? (isSpooky
+                                            ? ThemeColors.getButtonShadows(
+                                                'halloween')
+                                            : [
+                                                BoxShadow(
+                                                  color: const Color(0xFF4facfe)
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ])
+                                        : [];
+                                return Container(
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    gradient: gradient,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: buttonShadows,
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: _isFormValid
-                                      ? [
-                                          BoxShadow(
-                                            color: const Color(0xFF4facfe)
-                                                .withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ]
-                                      : [],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: _isFormValid ? _signIn : null,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                  child: ElevatedButton(
+                                    onPressed: _isFormValid ? _signIn : null,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Sign In',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                  child: const Text(
-                                    'Sign In',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                                );
+                              }),
                             const SizedBox(height: 24),
 
                             // Google Sign In button (hidden while loading)
@@ -1774,19 +2321,27 @@ class _SignInPageState extends State<SignInPage>
                               onPressed: _showDeveloperPassDialog,
                               icon: Icon(
                                 Icons.developer_mode,
-                                color: _developerMode ? Colors.green : Colors.amber,
+                                color: _developerMode
+                                    ? Colors.green
+                                    : Colors.amber,
                                 size: 20,
                               ),
                               label: Text(
-                                _developerMode ? 'Developer Mode Active' : 'Developer Pass',
+                                _developerMode
+                                    ? 'Developer Mode Active'
+                                    : 'Developer Pass',
                                 style: TextStyle(
-                                  color: _developerMode ? Colors.green : Colors.amber,
+                                  color: _developerMode
+                                      ? Colors.green
+                                      : Colors.amber,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
-                                  color: _developerMode ? Colors.green : Colors.amber,
+                                  color: _developerMode
+                                      ? Colors.green
+                                      : Colors.amber,
                                   width: 1.5,
                                 ),
                                 minimumSize: const Size(double.infinity, 44),
@@ -1815,8 +2370,7 @@ class SignUpPage extends StatefulWidget {
   _SignUpPageState createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage>
-    with SingleTickerProviderStateMixin {
+class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _dbHelper = DatabaseHelper();
@@ -1825,21 +2379,27 @@ class _SignUpPageState extends State<SignUpPage>
   bool _isLoading = false;
   bool _agreeToPrivacyPolicy = false;
   late AnimationController _animationController;
+  late AnimationController _backgroundController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  String _currentTheme = 'space';
+  String _currentTheme = 'halloween';
 
   @override
   void initState() {
     super.initState();
     _usernameController.addListener(_updateFormState);
     _passwordController.addListener(_updateFormState);
-    _loadSavedTheme();
 
+    // Initialize controllers first before any async operations that might trigger rebuilds
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
+
+    _backgroundController = AnimationController(
+      duration: const Duration(seconds: 12),
+      vsync: this,
+    )..repeat(reverse: true);
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -1859,6 +2419,9 @@ class _SignUpPageState extends State<SignUpPage>
     );
 
     _animationController.forward();
+
+    // Load saved theme after controllers are initialized
+    _loadSavedTheme();
   }
 
   @override
@@ -1868,6 +2431,7 @@ class _SignUpPageState extends State<SignUpPage>
     _usernameController.dispose();
     _passwordController.dispose();
     _animationController.dispose();
+    _backgroundController.dispose();
     super.dispose();
   }
 
@@ -1882,7 +2446,7 @@ class _SignUpPageState extends State<SignUpPage>
   Future<void> _loadSavedTheme() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _currentTheme = prefs.getString('current_theme') ?? 'space';
+      _currentTheme = prefs.getString('current_theme') ?? 'halloween';
     });
   }
 
@@ -1916,7 +2480,9 @@ class _SignUpPageState extends State<SignUpPage>
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 6),
-                const Text('Account created successfully!'),
+                Text(_currentTheme == 'halloween'
+                    ? 'Your spectral account has been conjured!'
+                    : 'Account created successfully!'),
               ],
             ),
             backgroundColor: Colors.green,
@@ -1955,7 +2521,7 @@ class _SignUpPageState extends State<SignUpPage>
     return Scaffold(
       body: Stack(
         children: [
-          getBackgroundForTheme(_currentTheme),
+          _HalloweenBackdrop(animation: _backgroundController),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -1976,9 +2542,11 @@ class _SignUpPageState extends State<SignUpPage>
                               height: 120,
                             ),
                             const SizedBox(height: 16),
-                            const Text(
-                              'Create Your Account',
-                              style: TextStyle(
+                            Text(
+                              _currentTheme == 'halloween'
+                                  ? 'Join the Haunted Academy'
+                                  : 'Create Your Account',
+                              style: const TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -1986,7 +2554,9 @@ class _SignUpPageState extends State<SignUpPage>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Join the quest for knowledge',
+                              _currentTheme == 'halloween'
+                                  ? 'Begin your spectral learning journey'
+                                  : 'Join the quest for knowledge',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.white.withOpacity(0.7),
@@ -2131,61 +2701,77 @@ class _SignUpPageState extends State<SignUpPage>
                             const SizedBox(height: 32),
 
                             // Sign Up button
-                            Container(
-                              height: 50,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: _isFormValid
-                                      ? [
-                                          const Color(0xFF4facfe),
-                                          const Color(0xFF00f2fe)
-                                        ]
-                                      : [Colors.grey, Colors.grey.shade700],
+                            Builder(builder: (context) {
+                              final bool isSpooky =
+                                  _currentTheme == 'halloween';
+                              final bool isEnabled =
+                                  _isFormValid && !_isLoading;
+                              final Gradient enabledGradient = isSpooky
+                                  ? ThemeColors.getButtonGradient('halloween')!
+                                  : const LinearGradient(
+                                      colors: [
+                                        Color(0xFF4facfe),
+                                        Color(0xFF00f2fe)
+                                      ],
+                                    );
+                              final Gradient disabledGradient = LinearGradient(
+                                  colors: [Colors.grey, Colors.grey.shade700]);
+                              final Gradient gradient = isEnabled
+                                  ? enabledGradient
+                                  : disabledGradient;
+                              final List<BoxShadow> buttonShadows = isEnabled
+                                  ? (isSpooky
+                                      ? ThemeColors.getButtonShadows(
+                                          'halloween')
+                                      : [
+                                          BoxShadow(
+                                            color: const Color(0xFF4facfe)
+                                                .withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ])
+                                  : [];
+                              return Container(
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: gradient,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: buttonShadows,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: _isFormValid
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(0xFF4facfe)
-                                              .withOpacity(0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ]
-                                    : [],
-                              ),
-                              child: ElevatedButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : (_isFormValid ? _signUp : null),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                child: ElevatedButton(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : (_isFormValid ? _signUp : null),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Sign Up',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                 ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  Colors.white),
-                                        ),
-                                      )
-                                    : const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                              ),
-                            ),
+                              );
+                            }),
                             const SizedBox(height: 24),
 
                             // Sign in text
@@ -2225,6 +2811,245 @@ class _SignUpPageState extends State<SignUpPage>
   }
 }
 
+class _HalloweenBackdrop extends StatelessWidget {
+  final Animation<double> animation;
+
+  const _HalloweenBackdrop({required this.animation});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final progress = animation.value;
+        final wave = sin(progress * 2 * pi);
+        final drift = cos(progress * 2 * pi);
+        final accent = (wave + 1) / 2;
+
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFF050009),
+                Color.lerp(
+                    const Color(0xFF090013), const Color(0xFF2B0040), accent)!,
+                const Color(0xFF050009),
+              ],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(0.0, -0.6 + wave * 0.08),
+                      radius: 1.2,
+                      colors: [
+                        const Color(0xFF36004D).withOpacity(0.35),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 40 + wave * 12,
+                right: -80,
+                child: _GlowingOrb(
+                  diameter: 300,
+                  color: const Color(0xFFFFE29A),
+                  glowColor:
+                      Colors.deepOrangeAccent.withOpacity(0.25 + accent * 0.15),
+                ),
+              ),
+              Positioned(
+                bottom: 140 + wave * 12,
+                left: -40,
+                child: _FogBlob(
+                  width: 260,
+                  height: 170,
+                  color:
+                      const Color(0xFF8C3DFF).withOpacity(0.25 + accent * 0.1),
+                ),
+              ),
+              Positioned(
+                bottom: 60 + drift * 10,
+                right: -80,
+                child: _FogBlob(
+                  width: 220,
+                  height: 150,
+                  color:
+                      const Color(0xFFFF6F91).withOpacity(0.22 + accent * 0.08),
+                ),
+              ),
+              _FloatingBat(
+                animation: animation,
+                phase: 0.0,
+                verticalAlignment: -0.25,
+              ),
+              _FloatingBat(
+                animation: animation,
+                phase: 0.33,
+                verticalAlignment: 0.05,
+              ),
+              _FloatingBat(
+                animation: animation,
+                phase: 0.66,
+                verticalAlignment: 0.25,
+              ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withOpacity(0.45),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FogBlob extends StatelessWidget {
+  final double width;
+  final double height;
+  final Color color;
+
+  const _FogBlob({
+    required this.width,
+    required this.height,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(height),
+        boxShadow: [
+          BoxShadow(
+            color: color,
+            blurRadius: height * 0.8,
+            spreadRadius: height * 0.3,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlowingOrb extends StatelessWidget {
+  final double diameter;
+  final Color color;
+  final Color glowColor;
+
+  const _GlowingOrb({
+    required this.diameter,
+    required this.color,
+    required this.glowColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: diameter,
+      height: diameter,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            color.withOpacity(0.95),
+            color.withOpacity(0.0),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: glowColor,
+            blurRadius: diameter * 0.45,
+            spreadRadius: diameter * 0.2,
+          ),
+        ],
+      ),
+      child: Align(
+        alignment: const Alignment(0.05, -0.2),
+        child: Icon(
+          Icons.dark_mode,
+          color: Colors.deepPurple.withOpacity(0.1),
+          size: diameter * 0.18,
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingBat extends StatelessWidget {
+  final Animation<double> animation;
+  final double phase;
+  final double verticalAlignment;
+
+  const _FloatingBat({
+    required this.animation,
+    required this.phase,
+    required this.verticalAlignment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final progress = (animation.value + phase) % 1.0;
+        final oscillation = sin(progress * 2 * pi);
+        final dx = -1.2 + (progress * 2.4);
+        final dy = verticalAlignment + oscillation * 0.08;
+        final scale = 0.85 + oscillation * 0.1;
+
+        return Align(
+          alignment: Alignment(dx, dy),
+          child: Transform.rotate(
+            angle: oscillation * 0.2,
+            child: Transform.scale(
+              scale: scale,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: const _BatShape(),
+    );
+  }
+}
+
+class _BatShape extends StatelessWidget {
+  const _BatShape();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 80,
+      height: 34,
+      child: CustomPaint(
+        painter: const _BatPainter(color: Color(0xFFA6A6A6)),
+      ),
+    );
+  }
+}
+
 class MainScreen extends StatefulWidget {
   final String username;
 
@@ -2239,7 +3064,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  String _currentTheme = 'space';
+  String _currentTheme = 'halloween';
   int _userPoints = 0;
   bool _developerMode = false;
   final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -2260,7 +3085,7 @@ class _MainScreenState extends State<MainScreen> {
     final theme = await _dbHelper.getCurrentTheme(widget.username);
     setState(() {
       _userPoints = points;
-      _currentTheme = theme ?? 'space';
+      _currentTheme = theme ?? 'halloween';
       _developerMode = widget.username == 'EduQuest';
     });
   }
@@ -2286,81 +3111,82 @@ class _MainScreenState extends State<MainScreen> {
       if (_learnTabIndex == 2) {
         // Show confirmation dialog
         bool shouldNavigate = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: _currentTheme == 'beach'
-                  ? ThemeColors.getCardColor('beach')
-                  : const Color(0xFF2A2D3E),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Row(
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: _currentTheme == 'beach'
-                        ? ThemeColors.getAccentColor('beach')
-                        : Colors.orange,
-                    size: 28,
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: _currentTheme == 'beach'
+                      ? ThemeColors.getCardColor('beach')
+                      : const Color(0xFF2A2D3E),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Discard Changes?',
+                  title: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: _currentTheme == 'beach'
+                            ? ThemeColors.getAccentColor('beach')
+                            : Colors.orange,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Discard Changes?',
+                        style: TextStyle(
+                          color: _currentTheme == 'beach'
+                              ? ThemeColors.getTextColor('beach')
+                              : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: Text(
+                    'You have unsaved changes in Quick Play. Are you sure you want to navigate away?',
                     style: TextStyle(
                       color: _currentTheme == 'beach'
-                          ? ThemeColors.getTextColor('beach')
-                          : Colors.white,
-                      fontWeight: FontWeight.bold,
+                          ? ThemeColors.getTextColor('beach').withOpacity(0.8)
+                          : Colors.white.withOpacity(0.8),
+                      fontSize: 16,
                     ),
                   ),
-                ],
-              ),
-              content: Text(
-                'You have unsaved changes in Quick Play. Are you sure you want to navigate away?',
-                style: TextStyle(
-                  color: _currentTheme == 'beach'
-                      ? ThemeColors.getTextColor('beach').withOpacity(0.8)
-                      : Colors.white.withOpacity(0.8),
-                  fontSize: 16,
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: _currentTheme == 'beach'
-                          ? ThemeColors.getPrimaryColor('beach')
-                          : Colors.blueAccent,
-                      fontWeight: FontWeight.bold,
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: _currentTheme == 'beach'
+                              ? ThemeColors.getPrimaryColor('beach')
+                              : Colors.blueAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _currentTheme == 'beach'
-                        ? ThemeColors.getAccentColor('beach')
-                        : Colors.orange,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _currentTheme == 'beach'
+                            ? ThemeColors.getAccentColor('beach')
+                            : Colors.orange,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Discard',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Discard',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ) ?? false;
+                  ],
+                );
+              },
+            ) ??
+            false;
 
         if (!shouldNavigate) {
           return; // Don't navigate if user cancels
@@ -2547,7 +3373,8 @@ class _LearnTabState extends State<LearnTab>
   List<Map<String, dynamic>> _premadeStudySets = [];
   bool _isLoading = true;
   late TabController _tabController;
-  final TextEditingController _importedSearchController = TextEditingController();
+  final TextEditingController _importedSearchController =
+      TextEditingController();
   String _importedSearchQuery = '';
 
   @override
@@ -2608,137 +3435,158 @@ class _LearnTabState extends State<LearnTab>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: ThemeColors.getOverlayStyle(widget.currentTheme),
       child: Scaffold(
-      body: Stack(
-        children: [
-          getBackgroundForTheme(widget.currentTheme),
-          SafeArea(
-            child: Column(
-              children: [
-                // Header with points
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome, ${widget.username}!',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: ThemeColors.getTextColor(widget.currentTheme),
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            'Let\'s learn something new today!',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: ThemeColors.getTextColor(widget.currentTheme).withOpacity(0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Colors.amber, Colors.orange],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.amber.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.diamond,
-                                color: Colors.white, size: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              widget.developerMode ? '∞' : '${widget.userPoints}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+        body: Stack(
+          children: [
+            getBackgroundForTheme(widget.currentTheme),
+            SafeArea(
+              child: Column(
+                children: [
+                  // Header with points
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ThemeCopy.getGreeting(
+                                  widget.currentTheme,
+                                  widget.username,
+                                ),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: ThemeColors.getTextColor(
+                                      widget.currentTheme),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 5),
+                              Text(
+                                ThemeCopy.getGreetingSubtitle(
+                                    widget.currentTheme),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: ThemeColors.getTextColor(
+                                          widget.currentTheme)
+                                      .withOpacity(0.8),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Colors.amber, Colors.orange],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.diamond,
+                                  color: Colors.white, size: 18),
+                              const SizedBox(width: 6),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  widget.developerMode
+                                      ? '∞'
+                                      : '${widget.userPoints}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                // Add vertical space
-                const SizedBox(height: 12),
-                // Study Sets Content
-                Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : Column(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(top: 0),
-                              decoration: BoxDecoration(
-                                color: ThemeColors.getTabBackdropColor(widget.currentTheme),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                              child: TabBar(
-                                controller: _tabController,
-                                labelColor: ThemeColors.getTabSelectedLabelColor(widget.currentTheme),
-                                labelStyle: TextStyle(
-                                  fontWeight: widget.currentTheme == 'forest'
-                                      ? FontWeight.bold
-                                      : FontWeight.w600,
+                  // Add vertical space
+                  const SizedBox(height: 12),
+                  // Study Sets Content
+                  Expanded(
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : Column(
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 0),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 6),
+                                child: TabBar(
+                                  controller: _tabController,
+                                  labelColor:
+                                      ThemeColors.getTabSelectedLabelColor(
+                                          widget.currentTheme),
+                                  labelStyle: TextStyle(
+                                    fontWeight: widget.currentTheme == 'forest'
+                                        ? FontWeight.bold
+                                        : FontWeight.w600,
+                                  ),
+                                  unselectedLabelColor:
+                                      ThemeColors.getTextColor(
+                                              widget.currentTheme)
+                                          .withOpacity(0.7),
+                                  unselectedLabelStyle: TextStyle(
+                                    fontWeight: widget.currentTheme == 'forest'
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                  ),
+                                  indicator: BoxDecoration(
+                                    color: ThemeColors.getTabPillColor(
+                                        widget.currentTheme),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  indicatorSize: TabBarIndicatorSize.tab,
+                                  indicatorPadding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 2),
+                                  tabs: const [
+                                    Tab(text: 'My Sets'),
+                                    Tab(text: 'Browse'),
+                                    Tab(text: 'Quick Play'),
+                                  ],
                                 ),
-                                unselectedLabelColor: ThemeColors
-                                    .getTextColor(widget.currentTheme)
-                                    .withOpacity(0.7),
-                                unselectedLabelStyle: TextStyle(
-                                  fontWeight: widget.currentTheme == 'forest'
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                ),
-                                indicator: BoxDecoration(
-                                  color: ThemeColors.getTabPillColor(widget.currentTheme),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                indicatorSize: TabBarIndicatorSize.tab,
-                                indicatorPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                tabs: const [
-                                  Tab(text: 'My Sets'),
-                                  Tab(text: 'Browse'),
-                                  Tab(text: 'Quick Play'),
-                                ],
                               ),
-                            ),
-                            Expanded(
-                              child: TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  _buildMyStudySets(),
-                                  _buildBrowseTab(),
-                                  _buildQuickPlayTab(),
-                                ],
+                              Expanded(
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    _buildMyStudySets(),
+                                    _buildBrowseTab(),
+                                    _buildQuickPlayTab(),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                ),
-              ],
+                            ],
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -2771,8 +3619,12 @@ class _LearnTabState extends State<LearnTab>
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Text(
                 searching
-                    ? 'No imported sets match your search.'
-                    : 'Create your first study set or import a premade one!',
+                    ? (widget.currentTheme == 'halloween'
+                        ? 'No cursed tomes found in the archives...'
+                        : 'No imported sets match your search.')
+                    : (widget.currentTheme == 'halloween'
+                        ? 'Summon your first study set or discover ancient tomes!'
+                        : 'Create your first study set or import a premade one!'),
                 style: TextStyle(
                   fontSize: 16,
                   color: widget.currentTheme == 'beach'
@@ -2783,21 +3635,37 @@ class _LearnTabState extends State<LearnTab>
               ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Switch to Browse tab instead of navigating to PremadeSetsScreen
-                _tabController.animateTo(1); // Browse tab is at index 1
-              },
-              icon: const Icon(Icons.download),
-              label: const Text('Browse Premade Sets'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
+            Builder(builder: (context) {
+              final bool isSpooky = widget.currentTheme == 'halloween';
+              Widget browseButton = ElevatedButton.icon(
+                onPressed: () {
+                  _tabController.animateTo(1);
+                },
+                icon: const Icon(Icons.download),
+                label: Text(
+                    isSpooky ? 'Explore Ancient Tomes' : 'Browse Premade Sets'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isSpooky ? Colors.transparent : Colors.blueAccent,
+                  shadowColor: isSpooky ? Colors.transparent : null,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                 ),
-              ),
-            ),
+              );
+              if (isSpooky) {
+                browseButton = Container(
+                  decoration: BoxDecoration(
+                    gradient: ThemeColors.getButtonGradient('halloween'),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: ThemeColors.getButtonShadows('halloween'),
+                  ),
+                  child: browseButton,
+                );
+              }
+              return browseButton;
+            }),
           ],
         ),
       );
@@ -2815,7 +3683,9 @@ class _LearnTabState extends State<LearnTab>
                   : Colors.white,
             ),
             decoration: InputDecoration(
-              hintText: 'Search imported sets...',
+              hintText: widget.currentTheme == 'halloween'
+                  ? 'Search the haunted archives...'
+                  : 'Search imported sets...',
               hintStyle: TextStyle(
                 color: widget.currentTheme == 'beach'
                     ? ThemeColors.getTextColor('beach').withOpacity(0.6)
@@ -2868,27 +3738,49 @@ class _LearnTabState extends State<LearnTab>
                 future: _dbHelper.getStudySetQuestionCount(studySet['id']),
                 builder: (context, snapshot) {
                   final questionCount = snapshot.data ?? 0;
+                  final gradient = widget.currentTheme == 'beach'
+                      ? ThemeColors.getBeachCardGradient()
+                      : (ThemeColors.getCardGradient(widget.currentTheme,
+                              variant: index) ??
+                          LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xFF2A2D3E).withOpacity(0.9),
+                              const Color(0xFF1D1E33),
+                            ],
+                          ));
+                  final Border? cardBorder = widget.currentTheme == 'halloween'
+                      ? Border.all(
+                          color: ThemeColors.getAccentColor('halloween')
+                              .withOpacity(0.4),
+                          width: 1.2,
+                        )
+                      : null;
+                  final List<BoxShadow> cardShadows =
+                      widget.currentTheme == 'halloween'
+                          ? ThemeColors.getButtonShadows('halloween')
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 20),
                     elevation: 10,
-                    shadowColor: Colors.black.withOpacity(0.4),
+                    shadowColor: Colors.transparent,
                     clipBehavior: Clip.antiAlias,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: widget.currentTheme == 'beach'
-                            ? ThemeColors.getBeachCardGradient()
-                            : LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  const Color(0xFF2A2D3E).withOpacity(0.9),
-                                  const Color(0xFF1D1E33),
-                                ],
-                              ),
+                        gradient: gradient,
                         borderRadius: BorderRadius.circular(16),
+                        border: cardBorder,
+                        boxShadow: cardShadows,
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(20),
@@ -2901,13 +3793,17 @@ class _LearnTabState extends State<LearnTab>
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color:
-                                        Colors.blueAccent.withOpacity(0.2),
+                                    color: widget.currentTheme == 'halloween'
+                                        ? const Color(0xFF2A0538)
+                                        : Colors.blueAccent.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Icon(
                                     _getSubjectIcon(studySet['name']),
-                                    color: Colors.blueAccent,
+                                    color: widget.currentTheme == 'halloween'
+                                        ? ThemeColors.getAccentColor(
+                                            'halloween')
+                                        : Colors.blueAccent,
                                     size: 32,
                                   ),
                                 ),
@@ -2922,22 +3818,17 @@ class _LearnTabState extends State<LearnTab>
                                         style: TextStyle(
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
-                                          color: widget.currentTheme == 'beach'
-                                              ? ThemeColors.getTextColor(
-                                                  'beach')
-                                              : Colors.white,
+                                          color: ThemeColors.getTextColor(
+                                              widget.currentTheme),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
                                         studySet['description'] ?? '',
                                         style: TextStyle(
-                                          color: widget.currentTheme == 'beach'
-                                              ? ThemeColors.getTextColor(
-                                                      'beach')
-                                                  .withOpacity(0.7)
-                                              : Colors.white
-                                                  .withOpacity(0.7),
+                                          color: ThemeColors.getTextColor(
+                                                  widget.currentTheme)
+                                              .withOpacity(0.7),
                                           fontSize: 14,
                                         ),
                                       ),
@@ -2945,12 +3836,9 @@ class _LearnTabState extends State<LearnTab>
                                       Text(
                                         '$questionCount question${questionCount == 1 ? '' : 's'}',
                                         style: TextStyle(
-                                          color: widget.currentTheme == 'beach'
-                                              ? ThemeColors.getTextColor(
-                                                      'beach')
-                                                  .withOpacity(0.8)
-                                              : Colors.white
-                                                  .withOpacity(0.8),
+                                          color: ThemeColors.getTextColor(
+                                                  widget.currentTheme)
+                                              .withOpacity(0.8),
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -3037,28 +3925,49 @@ class _LearnTabState extends State<LearnTab>
                                   ),
                                   const SizedBox(width: 12),
                                 ],
-                                ElevatedButton.icon(
-                                  onPressed: () => _startPractice(studySet),
-                                  icon:
-                                      const Icon(Icons.play_arrow, size: 18),
-                                  label: const Text('Practice'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        widget.currentTheme == 'beach'
-                                            ? ThemeColors
-                                                    .getTropicalGreen('beach')
-                                                .withOpacity(0.8)
-                                            : Colors.green.withOpacity(0.8),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 10,
+                                Builder(builder: (context) {
+                                  final isSpooky =
+                                      widget.currentTheme == 'halloween';
+                                  Widget button = ElevatedButton.icon(
+                                    onPressed: () => _startPractice(studySet),
+                                    icon:
+                                        const Icon(Icons.play_arrow, size: 18),
+                                    label: Text(
+                                        isSpooky ? 'Begin Ritual' : 'Practice'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isSpooky
+                                          ? Colors.transparent
+                                          : widget.currentTheme == 'beach'
+                                              ? ThemeColors.getTropicalGreen(
+                                                      'beach')
+                                                  .withOpacity(0.8)
+                                              : Colors.green.withOpacity(0.8),
+                                      shadowColor:
+                                          isSpooky ? Colors.transparent : null,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                ),
+                                  );
+                                  if (isSpooky) {
+                                    button = Container(
+                                      decoration: BoxDecoration(
+                                        gradient: ThemeColors.getButtonGradient(
+                                            'halloween'),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: ThemeColors.getButtonShadows(
+                                            'halloween'),
+                                      ),
+                                      child: button,
+                                    );
+                                  }
+                                  return button;
+                                }),
                               ],
                             ),
                           ],
@@ -3647,7 +4556,8 @@ class _LearnTabState extends State<LearnTab>
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          _startSATTopicPractice(studySet, 'Information and Ideas');
+                          _startSATTopicPractice(
+                              studySet, 'Information and Ideas');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF667eea),
@@ -3671,7 +4581,8 @@ class _LearnTabState extends State<LearnTab>
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          _startSATTopicPractice(studySet, 'Craft and Structure');
+                          _startSATTopicPractice(
+                              studySet, 'Craft and Structure');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF764ba2),
@@ -3699,7 +4610,8 @@ class _LearnTabState extends State<LearnTab>
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          _startSATTopicPractice(studySet, 'Expression of Ideas');
+                          _startSATTopicPractice(
+                              studySet, 'Expression of Ideas');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF43e97b),
@@ -3723,7 +4635,8 @@ class _LearnTabState extends State<LearnTab>
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          _startSATTopicPractice(studySet, 'Standard English Conventions');
+                          _startSATTopicPractice(
+                              studySet, 'Standard English Conventions');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFfa709a),
@@ -4594,7 +5507,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
   String? _selectedAnswer;
   bool _showAnswer = false;
   File? _userProfileImage;
-  
+
   // SAT question parsing variables
   String? _aiResponse;
   bool _showParseButton = false;
@@ -4621,7 +5534,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
     _loadQuestions();
     _loadUserProfileImage();
     _loadUserData();
-    
+
     // Check if this is an SAT topic and open chat for "Information and Ideas"
     if (widget.satTopic == 'Information and Ideas') {
       // Load the prompt first, then open chat
@@ -4640,14 +5553,16 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
 
   Future<void> _loadSATPrompt() async {
     try {
-      final promptContent = await rootBundle.loadString('assets/SATPrompts/Information_and_Ideas_Prompt');
+      final promptContent = await rootBundle
+          .loadString('assets/SATPrompts/Information_and_Ideas_Prompt');
       setState(() {
         informationAndIdeasPrompt = promptContent;
       });
     } catch (e) {
       // If file loading fails, use a fallback prompt
       setState(() {
-        informationAndIdeasPrompt = 'You are an expert in SAT Reading and Writing Section. Please help me practice Information and Ideas questions for the SAT.';
+        informationAndIdeasPrompt =
+            'You are an expert in SAT Reading and Writing Section. Please help me practice Information and Ideas questions for the SAT.';
       });
       print('Error loading SAT prompt: $e');
     }
@@ -4655,11 +5570,12 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
 
   Future<void> _loadSATPromptAndOpenChat() async {
     try {
-      final promptContent = await rootBundle.loadString('assets/SATPrompts/Information_and_Ideas_Prompt');
+      final promptContent = await rootBundle
+          .loadString('assets/SATPrompts/Information_and_Ideas_Prompt');
       setState(() {
         informationAndIdeasPrompt = promptContent;
       });
-      
+
       // Delay to ensure the screen is fully loaded, then open chat
       Future.delayed(const Duration(milliseconds: 500), () {
         _openQuestAIChat(informationAndIdeasPrompt);
@@ -4667,10 +5583,11 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
     } catch (e) {
       // If file loading fails, use a fallback prompt
       setState(() {
-        informationAndIdeasPrompt = 'You are an expert in SAT Reading and Writing Section. Please help me practice Information and Ideas questions for the SAT.';
+        informationAndIdeasPrompt =
+            'You are an expert in SAT Reading and Writing Section. Please help me practice Information and Ideas questions for the SAT.';
       });
       print('Error loading SAT prompt: $e');
-      
+
       // Still open chat with fallback prompt
       Future.delayed(const Duration(milliseconds: 500), () {
         _openQuestAIChat(informationAndIdeasPrompt);
@@ -4681,16 +5598,17 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
   void _openQuestAIChat(String initialMessage) {
     // Clear previous chat history
     _chatBloc.add(ChatClearHistoryEvent());
-    
+
     // Show the chat interface (no loading state initially)
     setState(() {
       _showChat = true;
       _isLoading = false;
     });
-    
+
     // Send the initial message to the chat
-    _chatBloc.add(ChatGenerationNewTextMessageEvent(inputMessage: initialMessage));
-    
+    _chatBloc
+        .add(ChatGenerationNewTextMessageEvent(inputMessage: initialMessage));
+
     // Add listener for chat responses to parse SAT questions
     _chatBloc.stream.listen((state) {
       if (state is ChatSuccessState && state.messages.isNotEmpty) {
@@ -4713,7 +5631,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
         );
       }
     });
-    
+
     // Auto-scroll to bottom after a short delay to ensure the chat interface is rendered
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_chatScrollController.hasClients) {
@@ -4744,40 +5662,41 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
       print('Contains %: ${aiResponse.contains('%')}');
       print('Contains [: ${aiResponse.contains('[')}');
       print('Contains ]: ${aiResponse.contains(']')}');
-      
+
       List<Map<String, dynamic>> parsedQuestions = [];
-      
+
       // Split the AI response into sections by looking for bracketed content
       RegExp questionPattern = RegExp(r'\[([^\]]+)\]');
       Iterable<RegExpMatch> matches = questionPattern.allMatches(aiResponse);
-      
+
       for (RegExpMatch match in matches) {
         String bracketContent = match.group(1) ?? '';
         print('Found bracket content: $bracketContent');
-        
+
         // Split the bracket content by % to see how many parts we have
         List<String> bracketParts = bracketContent.split('%');
         print('Bracket parts: $bracketParts (${bracketParts.length} parts)');
-        
+
         // We expect the format: [question%choiceA%choiceB%choiceC%choiceD%correct_letter%explanation]
         // So we need to find the question text that comes BEFORE the brackets
         if (bracketParts.length >= 6) {
           // Find the text before these brackets
-          String textBeforeBrackets = aiResponse.substring(0, match.start).trim();
+          String textBeforeBrackets =
+              aiResponse.substring(0, match.start).trim();
           print('Text before brackets: "$textBeforeBrackets"');
-          
+
           // Look for the last question in the text before brackets
           String questionText = '';
           String passage = '';
-          
+
           // Split by lines and find the question
           List<String> lines = textBeforeBrackets.split('\n');
           for (int i = lines.length - 1; i >= 0; i--) {
             String line = lines[i].trim();
             if (line.isNotEmpty) {
               // Check if this line looks like a question
-              if (line.contains('Which') || 
-                  line.contains('What') || 
+              if (line.contains('Which') ||
+                  line.contains('What') ||
                   line.contains('How') ||
                   line.contains('The author') ||
                   line.contains('purpose is to') ||
@@ -4794,7 +5713,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
               }
             }
           }
-          
+
           // If we couldn't find a question, use the last non-empty line
           if (questionText.isEmpty) {
             for (int i = lines.length - 1; i >= 0; i--) {
@@ -4807,10 +5726,10 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
               }
             }
           }
-          
+
           print('Extracted question: "$questionText"');
           print('Extracted passage: "$passage"');
-          
+
           // Now parse the bracket content - expecting 6 parts
           if (bracketParts.length >= 6) {
             String passageAndQuestion = bracketParts[0].trim();
@@ -4819,8 +5738,10 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
             String optionC = bracketParts[3].trim();
             String optionD = bracketParts[4].trim();
             String correctLetter = bracketParts[5].trim().toUpperCase();
-            String explanation = bracketParts.length > 6 ? bracketParts.sublist(6).join('%').trim() : '';
-            
+            String explanation = bracketParts.length > 6
+                ? bracketParts.sublist(6).join('%').trim()
+                : '';
+
             // Print all 6 parts to debug console
             print('=== PARSED 6 PARTS ===');
             print('1. Passage + Question: "$passageAndQuestion"');
@@ -4831,7 +5752,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
             print('6. Answer Letter: "$correctLetter"');
             print('7. Explanation: "$explanation"');
             print('=== END PARSED PARTS ===');
-            
+
             // Map the correct letter to the actual answer text
             String correctAnswer;
             switch (correctLetter) {
@@ -4849,38 +5770,41 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
                 break;
               default:
                 correctAnswer = optionA;
-                print('Unknown correct letter: $correctLetter, defaulting to A');
+                print(
+                    'Unknown correct letter: $correctLetter, defaulting to A');
             }
-            
+
             // Create the question object
             Map<String, dynamic> questionObj = {
               'question_text': optionA, // The actual question is now Choice A
-              'passage': passageAndQuestion, // The first part contains passage + question
+              'passage':
+                  passageAndQuestion, // The first part contains passage + question
               'options': '$optionA|$optionB|$optionC|$optionD',
               'correct_answer': correctAnswer,
               'correct_letter': correctLetter,
               'explanation': explanation,
             };
-            
+
             parsedQuestions.add(questionObj);
-            print('Successfully parsed SAT question: ${questionObj['question_text']}');
+            print(
+                'Successfully parsed SAT question: ${questionObj['question_text']}');
             print('With passage: ${questionObj['passage']}');
           }
         }
       }
-      
+
       // If no questions found with regex, try line-by-line parsing
       if (parsedQuestions.isEmpty) {
         print('No questions found with regex, trying line-by-line parsing');
         List<String> lines = aiResponse.split('\n');
-        
+
         for (String line in lines) {
           String trimmedLine = line.trim();
           if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
             // Parse the line directly
             String content = trimmedLine.substring(1, trimmedLine.length - 1);
             List<String> parts = content.split('%');
-            
+
             if (parts.length >= 6) {
               String passageAndQuestion = parts[0].trim();
               String optionA = parts[1].trim();
@@ -4888,8 +5812,9 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
               String optionC = parts[3].trim();
               String optionD = parts[4].trim();
               String correctLetter = parts[5].trim().toUpperCase();
-              String explanation = parts.length > 6 ? parts.sublist(6).join('%').trim() : '';
-              
+              String explanation =
+                  parts.length > 6 ? parts.sublist(6).join('%').trim() : '';
+
               // Print all 6 parts to debug console
               print('=== FALLBACK PARSED 6 PARTS ===');
               print('1. Passage + Question: "$passageAndQuestion"');
@@ -4900,7 +5825,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
               print('6. Answer Letter: "$correctLetter"');
               print('7. Explanation: "$explanation"');
               print('=== END FALLBACK PARSED PARTS ===');
-              
+
               // Map the correct letter to the actual answer text
               String correctAnswer;
               switch (correctLetter) {
@@ -4918,31 +5843,35 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
                   break;
                 default:
                   correctAnswer = optionA;
-                  print('Unknown correct letter: $correctLetter, defaulting to A');
+                  print(
+                      'Unknown correct letter: $correctLetter, defaulting to A');
               }
-              
+
               // Create the question object
               Map<String, dynamic> questionObj = {
                 'question_text': optionA, // The actual question is now Choice A
-                'passage': passageAndQuestion, // The first part contains passage + question
+                'passage':
+                    passageAndQuestion, // The first part contains passage + question
                 'options': '$optionA|$optionB|$optionC|$optionD',
                 'correct_answer': correctAnswer,
                 'correct_letter': correctLetter,
                 'explanation': explanation,
               };
-              
+
               parsedQuestions.add(questionObj);
-              print('Successfully parsed SAT question from bracketed line: ${questionObj['question_text']}');
+              print(
+                  'Successfully parsed SAT question from bracketed line: ${questionObj['question_text']}');
             }
           }
         }
       }
-      
+
       // If still no questions found, try to find any text with % separators
       if (parsedQuestions.isEmpty) {
-        print('Still no questions found, trying to find any text with % separators');
+        print(
+            'Still no questions found, trying to find any text with % separators');
         List<String> lines = aiResponse.split('\n');
-        
+
         for (String line in lines) {
           String trimmedLine = line.trim();
           // Look for any line that contains % separators and has enough parts
@@ -4955,8 +5884,9 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
               String optionC = parts[3].trim();
               String optionD = parts[4].trim();
               String correctLetter = parts[5].trim().toUpperCase();
-              String explanation = parts.length > 6 ? parts.sublist(6).join('%').trim() : '';
-              
+              String explanation =
+                  parts.length > 6 ? parts.sublist(6).join('%').trim() : '';
+
               // Print all 6 parts to debug console
               print('=== FINAL FALLBACK PARSED 6 PARTS ===');
               print('1. Passage + Question: "$passageAndQuestion"');
@@ -4967,7 +5897,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
               print('6. Answer Letter: "$correctLetter"');
               print('7. Explanation: "$explanation"');
               print('=== END FINAL FALLBACK PARSED PARTS ===');
-              
+
               // Map the correct letter to the actual answer text
               String correctAnswer;
               switch (correctLetter) {
@@ -4985,26 +5915,29 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
                   break;
                 default:
                   correctAnswer = optionA;
-                  print('Unknown correct letter: $correctLetter, defaulting to A');
+                  print(
+                      'Unknown correct letter: $correctLetter, defaulting to A');
               }
-              
+
               // Create the question object
               Map<String, dynamic> questionObj = {
                 'question_text': optionA, // The actual question is now Choice A
-                'passage': passageAndQuestion, // The first part contains passage + question
+                'passage':
+                    passageAndQuestion, // The first part contains passage + question
                 'options': '$optionA|$optionB|$optionC|$optionD',
                 'correct_answer': correctAnswer,
                 'correct_letter': correctLetter,
                 'explanation': explanation,
               };
-              
+
               parsedQuestions.add(questionObj);
-              print('Successfully parsed SAT question from line with % separators: ${questionObj['question_text']}');
+              print(
+                  'Successfully parsed SAT question from line with % separators: ${questionObj['question_text']}');
             }
           }
         }
       }
-      
+
       if (parsedQuestions.isNotEmpty) {
         setState(() {
           _questions = parsedQuestions;
@@ -5017,13 +5950,14 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
           _showParseButton = false; // Hide parse button
           _aiResponse = null; // Clear AI response
         });
-        
+
         print('Successfully loaded ${parsedQuestions.length} SAT questions');
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Successfully loaded ${parsedQuestions.length} SAT questions!'),
+            content: Text(
+                'Successfully loaded ${parsedQuestions.length} SAT questions!'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
@@ -5034,11 +5968,12 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
           _isLoading = false;
           _showParseButton = false; // Hide parse button
         });
-        
+
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No questions found in AI response. Please try again.'),
+            content:
+                Text('No questions found in AI response. Please try again.'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
@@ -5050,7 +5985,7 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
         _isLoading = false;
         _showParseButton = false; // Hide parse button
       });
-      
+
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -5061,10 +5996,6 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
       );
     }
   }
-
-
-
-
 
   @override
   void dispose() {
@@ -5671,7 +6602,8 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
       Icons.psychology,
       () {
         final dynamic sid = widget.studySet['id'];
-        final int studySetId = sid is int ? sid : int.tryParse(sid?.toString() ?? '') ?? 0;
+        final int studySetId =
+            sid is int ? sid : int.tryParse(sid?.toString() ?? '') ?? 0;
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -5695,7 +6627,8 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
       Icons.favorite,
       () {
         final dynamic sid = widget.studySet['id'];
-        final int studySetId = sid is int ? sid : int.tryParse(sid?.toString() ?? '') ?? 0;
+        final int studySetId =
+            sid is int ? sid : int.tryParse(sid?.toString() ?? '') ?? 0;
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -5719,7 +6652,8 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
       Icons.diamond,
       () {
         final dynamic sid = widget.studySet['id'];
-        final int studySetId = sid is int ? sid : int.tryParse(sid?.toString() ?? '') ?? 0;
+        final int studySetId =
+            sid is int ? sid : int.tryParse(sid?.toString() ?? '') ?? 0;
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -7374,6 +8308,10 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
     List<Color> gradientColors,
   ) {
     final isSelected = _selectedMode == mode;
+    final bool isSpooky = widget.currentTheme == 'halloween';
+    final Gradient? spookyGradient = isSpooky
+        ? ThemeColors.getCardGradient('halloween', variant: mode.hashCode.abs())
+        : null;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -7392,12 +8330,12 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
                 )
               : widget.currentTheme == 'beach'
                   ? ThemeColors.getBeachCardGradient()
-                  : LinearGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.1),
-                        Colors.white.withOpacity(0.05),
-                      ],
-                    ),
+                  : spookyGradient,
+          color: isSelected ||
+                  widget.currentTheme == 'beach' ||
+                  spookyGradient != null
+              ? null
+              : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
           boxShadow: isSelected
               ? [
@@ -7407,17 +8345,21 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
                     offset: const Offset(0, 6),
                   ),
                 ]
-              : [
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.08),
-                    blurRadius: 4,
-                    spreadRadius: 1,
-                  ),
-                ],
+              : (spookyGradient != null
+                  ? ThemeColors.getButtonShadows('halloween')
+                  : [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.08),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ]),
           border: Border.all(
             color: isSelected
                 ? Colors.white.withOpacity(0.3)
-                : Colors.white.withOpacity(0.1),
+                : isSpooky
+                    ? ThemeColors.getAccentColor('halloween').withOpacity(0.35)
+                    : Colors.white.withOpacity(0.1),
             width: 1.5,
           ),
         ),
@@ -7503,6 +8445,10 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
     Gradient gradient,
   ) {
     final isSelected = _selectedMode == mode;
+    final bool isSpooky = widget.currentTheme == 'halloween';
+    final Gradient? spookyGradient = isSpooky
+        ? ThemeColors.getCardGradient('halloween', variant: mode.hashCode.abs())
+        : null;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -7517,10 +8463,10 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
               ? gradient
               : widget.currentTheme == 'beach'
                   ? ThemeColors.getBeachCardGradient()
-                  : null,
+                  : spookyGradient,
           color: isSelected
               ? null
-              : widget.currentTheme == 'beach'
+              : widget.currentTheme == 'beach' || spookyGradient != null
                   ? null
                   : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
@@ -7532,13 +8478,15 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
                     offset: const Offset(0, 10),
                   ),
                 ]
-              : [
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.1),
-                    blurRadius: 5,
-                    spreadRadius: 1,
-                  ),
-                ],
+              : (spookyGradient != null
+                  ? ThemeColors.getButtonShadows('halloween')
+                  : [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.1),
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                      ),
+                    ]),
         ),
         child: Row(
           children: [
@@ -7777,8 +8725,10 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Display passage if it exists (for SAT questions)
-                    if (_questions[_currentQuestionIndex]['passage'] != null && 
-                        _questions[_currentQuestionIndex]['passage'].toString().isNotEmpty) ...[ 
+                    if (_questions[_currentQuestionIndex]['passage'] != null &&
+                        _questions[_currentQuestionIndex]['passage']
+                            .toString()
+                            .isNotEmpty) ...[
                       Text(
                         _questions[_currentQuestionIndex]['passage'],
                         style: TextStyle(
@@ -7915,7 +8865,8 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
           );
         }).toList(),
         // Show explanation for SAT questions when answer is revealed
-        if (_showAnswer && widget.satTopic == 'Information and Ideas' && 
+        if (_showAnswer &&
+            widget.satTopic == 'Information and Ideas' &&
             _questions[_currentQuestionIndex]['explanation'] != null) ...[
           const SizedBox(height: 16),
           Container(
@@ -8296,7 +9247,8 @@ class _PracticeModeScreenState extends State<PracticeModeScreen>
             ),
           ),
           // Parse questions button for SAT Information and Ideas
-          if (_showParseButton && widget.satTopic == 'Information and Ideas') ...[
+          if (_showParseButton &&
+              widget.satTopic == 'Information and Ideas') ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Container(
@@ -9356,8 +10308,12 @@ class _QuizletImportScreenState extends State<QuizletImportScreen> {
       context: this.context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Study Set Created!'),
-        content: const Text('Your study set was created successfully.'),
+        title: Text(widget.currentTheme == 'halloween'
+            ? 'Tome Conjured!'
+            : 'Study Set Created!'),
+        content: Text(widget.currentTheme == 'halloween'
+            ? 'Your cursed study set has been added to the archives.'
+            : 'Your study set was created successfully.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -9808,8 +10764,12 @@ class _SpreadsheetImportScreenState extends State<SpreadsheetImportScreen> {
       context: this.context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Study Set Created!'),
-        content: const Text('Your study set was created successfully.'),
+        title: Text(widget.currentTheme == 'halloween'
+            ? 'Tome Conjured!'
+            : 'Study Set Created!'),
+        content: Text(widget.currentTheme == 'halloween'
+            ? 'Your cursed study set has been added to the archives.'
+            : 'Your study set was created successfully.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -10244,8 +11204,12 @@ class _ManualQuestionCreationScreenState
       context: this.context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Study Set Created!'),
-        content: const Text('Your study set was created successfully.'),
+        title: Text(widget.currentTheme == 'halloween'
+            ? 'Tome Conjured!'
+            : 'Study Set Created!'),
+        content: Text(widget.currentTheme == 'halloween'
+            ? 'Your cursed study set has been added to the archives.'
+            : 'Your study set was created successfully.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -11068,5 +12032,3 @@ class PracticeTypeChoiceScreen extends StatelessWidget {
     );
   }
 }
-
-

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../helpers/database_helper.dart';
-import '../main.dart'
-  show getBackgroundForTheme, ThemeColors;
+import '../main.dart' show getBackgroundForTheme, ThemeColors, ThemeCopy;
 
 class ShopTab extends StatefulWidget {
   final String username;
@@ -65,11 +64,11 @@ class _ShopTabState extends State<ShopTab>
 
   final List<Map<String, dynamic>> _themes = [
     {
-      'name': 'Space',
-      'price': 0,
-      'color': const Color(0xFF0A0E21),
-      'description': 'Classic space theme with cosmic vibes',
-      'icon': Icons.rocket_launch,
+      'name': 'Halloween',
+      'price': 150,
+      'color': const Color(0xFF4A148C),
+      'description': 'Haunted neon fog, eldritch moonlight, and playful bats',
+      'icon': Icons.dark_mode,
     },
     {
       'name': 'Beach',
@@ -86,11 +85,11 @@ class _ShopTabState extends State<ShopTab>
       'icon': Icons.forest,
     },
     {
-      'name': 'Volcano',
-      'price': 150,
-      'color': const Color(0xFFD32F2F),
-      'description': 'Molten lava energy and heat',
-      'icon': Icons.local_fire_department,
+      'name': 'Space',
+      'price': 0,
+      'color': const Color(0xFF0A0E21),
+      'description': 'Classic space theme with cosmic vibes',
+      'icon': Icons.rocket_launch,
     },
     {
       'name': 'Arctic',
@@ -165,7 +164,7 @@ class _ShopTabState extends State<ShopTab>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'EduQuest Store',
+                                ThemeCopy.getStoreTitle(widget.currentTheme),
                                 style: TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
@@ -176,11 +175,11 @@ class _ShopTabState extends State<ShopTab>
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Enhance your learning experience',
+                                ThemeCopy.getStoreSubtitle(widget.currentTheme),
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: ThemeColors
-                                      .getTextColor(widget.currentTheme)
+                                  color: ThemeColors.getTextColor(
+                                          widget.currentTheme)
                                       .withOpacity(0.8),
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -197,7 +196,8 @@ class _ShopTabState extends State<ShopTab>
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFFFD700).withOpacity(0.4),
+                                  color:
+                                      const Color(0xFFFFD700).withOpacity(0.4),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -210,7 +210,9 @@ class _ShopTabState extends State<ShopTab>
                                     color: Colors.white, size: 18),
                                 const SizedBox(width: 6),
                                 Text(
-                                  widget.developerMode ? '∞' : '${widget.userPoints}',
+                                  widget.developerMode
+                                      ? '∞'
+                                      : '${widget.userPoints}',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -238,9 +240,9 @@ class _ShopTabState extends State<ShopTab>
                           controller: _tabController,
                           labelColor:
                               ThemeColors.getTextColor(widget.currentTheme),
-                          unselectedLabelColor: ThemeColors
-                              .getTextColor(widget.currentTheme)
-                              .withOpacity(0.6),
+                          unselectedLabelColor:
+                              ThemeColors.getTextColor(widget.currentTheme)
+                                  .withOpacity(0.6),
                           indicator: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFF667eea), Color(0xFF764ba2)],
@@ -342,24 +344,64 @@ class _ShopTabState extends State<ShopTab>
         itemCount: _themes.length,
         itemBuilder: (BuildContext context, int index) {
           final theme = _themes[index];
-      final canAfford = widget.developerMode ||
-        widget.userPoints >= (theme['price'] as int);
+          final canAfford = widget.developerMode ||
+              widget.userPoints >= (theme['price'] as int);
           final isEquipped = widget.currentTheme == theme['name'].toLowerCase();
           final isOwned = _ownedThemes.contains(theme['name'].toLowerCase());
+
+          final bool isSpookySkin = widget.currentTheme == 'halloween';
+          final Color primaryTextColor = isSpookySkin
+              ? ThemeColors.getTextColor('halloween')
+              : Colors.white;
+          final Gradient cardGradient = isSpookySkin
+              ? ThemeColors.getCardGradient('halloween', variant: index) ??
+                  LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme['color'],
+                      theme['color'].withOpacity(0.8),
+                    ],
+                  )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme['color'],
+                    theme['color'].withOpacity(0.8),
+                  ],
+                );
+          final List<BoxShadow> cardShadows = isSpookySkin
+              ? ThemeColors.getButtonShadows('halloween')
+              : [
+                  BoxShadow(
+                    color: isEquipped
+                        ? theme['color'].withOpacity(0.4)
+                        : Colors.black.withOpacity(0.15),
+                    blurRadius: isEquipped ? 20 : 8,
+                    offset: const Offset(0, 6),
+                    spreadRadius: isEquipped ? 2 : 0,
+                  ),
+                ];
+          final Border? cardBorder = isEquipped
+              ? Border.all(
+                  color: Colors.white.withOpacity(0.6),
+                  width: 2,
+                )
+              : isSpookySkin
+                  ? Border.all(
+                      color:
+                          ThemeColors.getAccentColor('halloween').withOpacity(
+                        0.4,
+                      ),
+                      width: 1.2,
+                    )
+                  : null;
 
           return Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: isEquipped
-                      ? theme['color'].withOpacity(0.4)
-                      : Colors.black.withOpacity(0.15),
-                  blurRadius: isEquipped ? 20 : 8,
-                  offset: const Offset(0, 6),
-                  spreadRadius: isEquipped ? 2 : 0,
-                ),
-              ],
+              boxShadow: cardShadows,
             ),
             child: Card(
               elevation: 0,
@@ -369,20 +411,8 @@ class _ShopTabState extends State<ShopTab>
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme['color'],
-                      theme['color'].withOpacity(0.8),
-                    ],
-                  ),
-                  border: isEquipped
-                      ? Border.all(
-                          color: Colors.white.withOpacity(0.6),
-                          width: 2,
-                        )
-                      : null,
+                  gradient: cardGradient,
+                  border: cardBorder,
                 ),
                 child: Stack(
                   children: [
@@ -451,10 +481,10 @@ class _ShopTabState extends State<ShopTab>
                               Text(
                                 theme['name'],
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: primaryTextColor,
                                   letterSpacing: 0.5,
                                 ),
                                 maxLines: 1,
@@ -466,7 +496,7 @@ class _ShopTabState extends State<ShopTab>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: primaryTextColor.withOpacity(0.85),
                                   height: 1.3,
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -508,69 +538,89 @@ class _ShopTabState extends State<ShopTab>
                           else if (isOwned)
                             SizedBox(
                               width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    _selectTheme(theme['name'].toLowerCase()),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      theme['color'].withOpacity(0.15),
-                                  foregroundColor: Colors.white,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 10),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                              child: _wrapSpookyButton(
+                                ElevatedButton(
+                                  onPressed: () =>
+                                      _selectTheme(theme['name'].toLowerCase()),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        widget.currentTheme == 'halloween'
+                                            ? Colors.transparent
+                                            : theme['color'].withOpacity(0.15),
+                                    shadowColor:
+                                        widget.currentTheme == 'halloween'
+                                            ? Colors.transparent
+                                            : null,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
                                   ),
-                                  elevation: 0,
-                                ),
-                                child: const Text(
-                                  'SELECT',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.8,
+                                  child: const Text(
+                                    'SELECT',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                    ),
                                   ),
                                 ),
+                                radius: BorderRadius.circular(12),
                               ),
                             )
                           else
                             SizedBox(
                               width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: canAfford
-                                    ? () => _purchaseTheme(theme)
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: canAfford
-                                      ? theme['color'].withOpacity(0.15)
-                                      : Colors.grey.shade600.withOpacity(0.8),
-                                  foregroundColor: Colors.white,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 10),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                              child: _wrapSpookyButton(
+                                ElevatedButton(
+                                  onPressed: canAfford
+                                      ? () => _purchaseTheme(theme)
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: widget.currentTheme ==
+                                            'halloween'
+                                        ? Colors.transparent
+                                        : canAfford
+                                            ? theme['color'].withOpacity(0.15)
+                                            : Colors.grey.shade600
+                                                .withOpacity(0.8),
+                                    shadowColor:
+                                        widget.currentTheme == 'halloween'
+                                            ? Colors.transparent
+                                            : null,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
                                   ),
-                                  elevation: 0,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.diamond,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${theme['price']}',
-                                      style: const TextStyle(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.diamond,
+                                        size: 16,
                                         color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${theme['price']}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                                radius: BorderRadius.circular(12),
                               ),
                             ),
                         ],
@@ -600,25 +650,57 @@ class _ShopTabState extends State<ShopTab>
         itemBuilder: (BuildContext context, int index) {
           final powerup = _powerups[index];
           final userCount = _userPowerups[powerup['id']] ?? 0;
-      final canAfford = widget.developerMode ||
-        widget.userPoints >= (powerup['price'] as int);
+          final canAfford = widget.developerMode ||
+              widget.userPoints >= (powerup['price'] as int);
+          final bool isSpookySkin = widget.currentTheme == 'halloween';
+          final Gradient cardGradient = isSpookySkin
+              ? ThemeColors.getCardGradient('halloween',
+                      variant: _themes.length + index) ??
+                  LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      powerup['color'],
+                      powerup['color'].withOpacity(0.8),
+                    ],
+                  )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    powerup['color'],
+                    powerup['color'].withOpacity(0.8),
+                  ],
+                );
+          final List<BoxShadow> cardShadows = isSpookySkin
+              ? ThemeColors.getButtonShadows('halloween')
+              : [
+                  BoxShadow(
+                    color: powerup['color'].withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ];
+          final Border cardBorder = Border.all(
+            color: isSpookySkin
+                ? ThemeColors.getAccentColor('halloween').withOpacity(0.35)
+                : Colors.white.withOpacity(0.3),
+            width: 1,
+          );
+          final Color powerupTextColor = isSpookySkin
+              ? ThemeColors.getTextColor('halloween')
+              : Colors.white;
 
           return Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: powerup['color'].withOpacity(0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                  spreadRadius: 2,
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: cardShadows,
             ),
             child: Card(
               elevation: 0,
@@ -628,18 +710,8 @@ class _ShopTabState extends State<ShopTab>
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      powerup['color'],
-                      powerup['color'].withOpacity(0.8),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                    width: 1,
-                  ),
+                  gradient: cardGradient,
+                  border: cardBorder,
                 ),
                 child: Stack(
                   children: [
@@ -651,7 +723,9 @@ class _ShopTabState extends State<ShopTab>
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: isSpookySkin
+                                  ? const Color(0xFF2A0538)
+                                  : Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
@@ -663,10 +737,10 @@ class _ShopTabState extends State<ShopTab>
                           const SizedBox(height: 4),
                           Text(
                             powerup['name'],
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: powerupTextColor,
                               letterSpacing: 0.5,
                             ),
                             textAlign: TextAlign.center,
@@ -684,7 +758,7 @@ class _ShopTabState extends State<ShopTab>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: powerupTextColor.withOpacity(0.85),
                                   height: 1.1,
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -719,8 +793,8 @@ class _ShopTabState extends State<ShopTab>
                                     child: Text(
                                       'Owned: $userCount',
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: powerupTextColor,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 0.5,
@@ -733,45 +807,54 @@ class _ShopTabState extends State<ShopTab>
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(10),
-                                      gradient: canAfford
-                                          ? LinearGradient(
-                                              colors: [
-                                                powerup['color']
-                                                    .withOpacity(0.9),
-                                                powerup['color']
-                                                    .withOpacity(0.7),
-                                              ],
-                                            )
-                                          : LinearGradient(
-                                              colors: [
-                                                Colors.grey.shade700,
-                                                Colors.grey.shade600,
-                                              ],
-                                            ),
-                                      boxShadow: canAfford
-                                          ? [
-                                              BoxShadow(
-                                                color: powerup['color']
-                                                    .withOpacity(0.6),
-                                                blurRadius: 12,
-                                                spreadRadius: 1,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ]
-                                          : [],
+                                      gradient: isSpookySkin
+                                          ? ThemeColors.getButtonGradient(
+                                              'halloween')
+                                          : canAfford
+                                              ? LinearGradient(
+                                                  colors: [
+                                                    powerup['color']
+                                                        .withOpacity(0.9),
+                                                    powerup['color']
+                                                        .withOpacity(0.7),
+                                                  ],
+                                                )
+                                              : LinearGradient(
+                                                  colors: [
+                                                    Colors.grey.shade700,
+                                                    Colors.grey.shade600,
+                                                  ],
+                                                ),
+                                      boxShadow: isSpookySkin
+                                          ? ThemeColors.getButtonShadows(
+                                              'halloween')
+                                          : canAfford
+                                              ? [
+                                                  BoxShadow(
+                                                    color: powerup['color']
+                                                        .withOpacity(0.6),
+                                                    blurRadius: 12,
+                                                    spreadRadius: 1,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ]
+                                              : [],
                                     ),
                                     child: ElevatedButton(
                                       onPressed: canAfford
                                           ? () => _purchasePowerup(powerup)
                                           : null,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.transparent,
+                                        backgroundColor: isSpookySkin
+                                            ? Colors.transparent
+                                            : Colors.transparent,
                                         shadowColor: Colors.transparent,
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 8),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
                                         ),
                                         elevation: 0,
                                       ),
@@ -823,6 +906,22 @@ class _ShopTabState extends State<ShopTab>
     );
   }
 
+  Widget _wrapSpookyButton(Widget child,
+      {BorderRadius? radius, EdgeInsetsGeometry? margin}) {
+    if (widget.currentTheme != 'halloween') {
+      return child;
+    }
+    return Container(
+      margin: margin,
+      decoration: BoxDecoration(
+        gradient: ThemeColors.getButtonGradient('halloween'),
+        borderRadius: radius ?? BorderRadius.circular(12),
+        boxShadow: ThemeColors.getButtonShadows('halloween'),
+      ),
+      child: child,
+    );
+  }
+
   Future<void> _purchaseTheme(Map<String, dynamic> theme) async {
     if (!widget.developerMode && widget.userPoints < (theme['price'] as int)) {
       ScaffoldMessenger.of(this.context).showSnackBar(
@@ -844,7 +943,8 @@ class _ShopTabState extends State<ShopTab>
     }
 
     try {
-      await _dbHelper.purchaseTheme(widget.username, theme['name'].toLowerCase());
+      await _dbHelper.purchaseTheme(
+          widget.username, theme['name'].toLowerCase());
       if (!widget.developerMode) {
         final newPoints = widget.userPoints - (theme['price'] as int);
         await _dbHelper.updateUserPoints(widget.username, newPoints);
@@ -898,7 +998,8 @@ class _ShopTabState extends State<ShopTab>
   }
 
   Future<void> _purchasePowerup(Map<String, dynamic> powerup) async {
-    if (!widget.developerMode && widget.userPoints < (powerup['price'] as int)) {
+    if (!widget.developerMode &&
+        widget.userPoints < (powerup['price'] as int)) {
       // Suppress SnackBar per requirement
       return;
     }

@@ -15,7 +15,7 @@
 **Show**:
 - Sign in to the app
 - Navigate to shop
-- Show 6 different themes (space, beach, forest, arctic, crystal, volcano)
+- Show 6 different themes (space, beach, forest, arctic, crystal, Halloween)
 - Purchase a theme with points
 - Switch themes to show visual changes
 - Show power-ups in shop

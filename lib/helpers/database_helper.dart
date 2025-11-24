@@ -51,6 +51,22 @@ class DatabaseHelper {
   // Remote API client for Mongo-backed operations
   final RemoteApiClient _remote = RemoteApiClient();
 
+  static const List<String> _baseFreeThemes = ['halloween', 'space'];
+
+  static bool _isBaseTheme(String theme) => _baseFreeThemes.contains(theme);
+
+  static List<String> _withBaseThemes([Iterable<String>? extras]) {
+    final themes = List<String>.from(_baseFreeThemes);
+    if (extras != null) {
+      for (final theme in extras) {
+        if (!themes.contains(theme)) {
+          themes.add(theme);
+        }
+      }
+    }
+    return themes;
+  }
+
   /**
    * Gets the database instance, initializing it if necessary.
    * 
@@ -132,7 +148,7 @@ class DatabaseHelper {
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         points INTEGER DEFAULT 0,
-        current_theme TEXT DEFAULT 'space',
+        current_theme TEXT DEFAULT 'halloween',
         created_at TEXT NOT NULL
       )
     ''');
@@ -264,8 +280,8 @@ class DatabaseHelper {
           final username = user['username'] as String;
           final currentTheme = user['current_theme'] as String;
 
-          // If current theme is not 'space' (the free theme), mark it as purchased
-          if (currentTheme != 'space') {
+          // If current theme isn't one of the base free themes, mark it as purchased
+          if (!_isBaseTheme(currentTheme)) {
             try {
               await db.insert('user_purchased_themes', {
                 'username': username,
@@ -422,7 +438,7 @@ class DatabaseHelper {
    * Creates a new user account in the database.
    * 
    * This method inserts a new user record with the provided credentials.
-   * New users start with 0 points and the default 'space' theme.
+   * New users start with 0 points and the default 'halloween' theme.
    * 
    * @param username The username for the new account
    * @param password The password for the new account
@@ -451,7 +467,7 @@ class DatabaseHelper {
         'username': username,
         'password': password,
         'points': 0,
-        'current_theme': 'space',
+        'current_theme': 'halloween',
         'created_at': DateTime.now().toIso8601String(),
       });
       print(
@@ -779,7 +795,8 @@ class DatabaseHelper {
         final points = await _remote.getUserPoints(username).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            print('DEBUG: Remote getUserPoints timed out, falling back to local');
+            print(
+                'DEBUG: Remote getUserPoints timed out, falling back to local');
             throw TimeoutException('getUserPoints timeout');
           },
         );
@@ -812,24 +829,26 @@ class DatabaseHelper {
       print('DEBUG: getUserPoints stack trace: ${StackTrace.current}');
       return 0;
     }
-    
   }
 
   Future<void> updateUserPoints(String username, int points) async {
-    print('DEBUG: updateUserPoints called for username: $username with points: $points');
+    print(
+        'DEBUG: updateUserPoints called for username: $username with points: $points');
     if (AppConfig.useRemoteDb) {
       try {
         await _remote.setUserPoints(username, points).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            print('DEBUG: Remote updateUserPoints timed out, falling back to local');
+            print(
+                'DEBUG: Remote updateUserPoints timed out, falling back to local');
             throw TimeoutException('updateUserPoints timeout');
           },
         );
         print('DEBUG: Remote updateUserPoints ok');
         return;
       } catch (e) {
-        print('DEBUG: Remote updateUserPoints error: $e, falling back to local');
+        print(
+            'DEBUG: Remote updateUserPoints error: $e, falling back to local');
         // Fall back to local on timeout or error
       }
     }
@@ -841,10 +860,12 @@ class DatabaseHelper {
         where: 'username = ?',
         whereArgs: [username],
       );
-      print('DEBUG: updateUserPoints completed. Rows affected: $result for username: $username');
+      print(
+          'DEBUG: updateUserPoints completed. Rows affected: $result for username: $username');
 
       if (result == 0) {
-        print('DEBUG: updateUserPoints - No rows were updated for username: $username');
+        print(
+            'DEBUG: updateUserPoints - No rows were updated for username: $username');
       }
     } catch (e) {
       print('DEBUG: updateUserPoints error: $e');
@@ -859,7 +880,8 @@ class DatabaseHelper {
         return await _remote.getCurrentTheme(username).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            print('DEBUG: Remote getCurrentTheme timed out, falling back to local');
+            print(
+                'DEBUG: Remote getCurrentTheme timed out, falling back to local');
             throw TimeoutException('getCurrentTheme timeout');
           },
         );
@@ -884,13 +906,15 @@ class DatabaseHelper {
         await _remote.setCurrentTheme(username, theme).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            print('DEBUG: Remote updateCurrentTheme timed out, falling back to local');
+            print(
+                'DEBUG: Remote updateCurrentTheme timed out, falling back to local');
             throw TimeoutException('updateCurrentTheme timeout');
           },
         );
         return;
       } catch (e) {
-        print('DEBUG: Remote updateCurrentTheme error: $e, falling back to local');
+        print(
+            'DEBUG: Remote updateCurrentTheme error: $e, falling back to local');
         // Fall back to local
       }
     }
@@ -904,8 +928,8 @@ class DatabaseHelper {
   }
 
   Future<bool> userOwnsTheme(String username, String theme) async {
-    // Space theme is free for everyone
-    if (theme == 'space') {
+    // Base themes (like space and halloween) are always free
+    if (_isBaseTheme(theme)) {
       return true;
     }
     if (AppConfig.useRemoteDb) {
@@ -937,11 +961,12 @@ class DatabaseHelper {
         final themes = await _remote.getUserOwnedThemes(username).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            print('DEBUG: Remote getUserOwnedThemes timed out, falling back to local');
+            print(
+                'DEBUG: Remote getUserOwnedThemes timed out, falling back to local');
             throw TimeoutException('getUserOwnedThemes timeout');
           },
         );
-        return {'space', ...themes}.toList();
+        return _withBaseThemes(List<String>.from(themes));
       } catch (e) {
         print('DEBUG: Remote getUserOwnedThemes: $e, falling back to local');
         // Fall back to local
@@ -955,14 +980,17 @@ class DatabaseHelper {
         where: 'username = ?',
         whereArgs: [username],
       );
-      List<String> ownedThemes = ['space'];
+      final ownedThemes = _withBaseThemes();
       for (var row in result) {
-        ownedThemes.add(row['theme_name'] as String);
+        final themeName = row['theme_name'] as String;
+        if (!ownedThemes.contains(themeName)) {
+          ownedThemes.add(themeName);
+        }
       }
       return ownedThemes;
     } catch (e) {
       print('DEBUG: Error in getUserOwnedThemes: $e');
-      return ['space'];
+      return _withBaseThemes();
     }
   }
 
@@ -973,7 +1001,8 @@ class DatabaseHelper {
         await _remote.purchaseTheme(username, theme).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            print('DEBUG: Remote purchaseTheme timed out, falling back to local');
+            print(
+                'DEBUG: Remote purchaseTheme timed out, falling back to local');
             throw TimeoutException('purchaseTheme timeout');
           },
         );
@@ -1050,17 +1079,21 @@ class DatabaseHelper {
         String? setName;
         try {
           final db = await database;
-          final res = await db.query('study_sets', where: 'id = ?', whereArgs: [studySetId]);
+          final res = await db
+              .query('study_sets', where: 'id = ?', whereArgs: [studySetId]);
           if (res.isNotEmpty) setName = res.first['name'] as String?;
         } catch (_) {}
         if (setName == null) {
           debugPrint('Could not resolve study set name for ID $studySetId');
           return;
         }
-  await _remote.addImportedSet(username, setName, studySetId: studySetId).timeout(
+        await _remote
+            .addImportedSet(username, setName, studySetId: studySetId)
+            .timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('Remote addImportedSet timed out, falling back to local');
+            debugPrint(
+                'Remote addImportedSet timed out, falling back to local');
             throw TimeoutException('addImportedSet timeout');
           },
         );
@@ -1073,7 +1106,8 @@ class DatabaseHelper {
     }
     final db = await database;
     final userId = await getUserId(username);
-    debugPrint('Attempting to import set ID $studySetId for user $username (ID: $userId)');
+    debugPrint(
+        'Attempting to import set ID $studySetId for user $username (ID: $userId)');
     final existingSet = await db.query(
       'user_study_sets',
       where: 'user_id = ? AND study_set_id = ?',
@@ -1108,7 +1142,8 @@ class DatabaseHelper {
         final sets = await _remote.getUserImportedSets(username).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('Remote getUserImportedSets timed out, falling back to local');
+            debugPrint(
+                'Remote getUserImportedSets timed out, falling back to local');
             throw TimeoutException('getUserImportedSets timeout');
           },
         );
@@ -1118,7 +1153,8 @@ class DatabaseHelper {
         for (var remoteSet in sets) {
           final setName = remoteSet['name'] as String?;
           if (setName != null) {
-            final localMatch = await db.query('study_sets', where: 'name = ?', whereArgs: [setName]);
+            final localMatch = await db
+                .query('study_sets', where: 'name = ?', whereArgs: [setName]);
             if (localMatch.isNotEmpty) {
               enrichedSets.add(localMatch.first);
             } else {
@@ -1134,7 +1170,8 @@ class DatabaseHelper {
         }
         return enrichedSets;
       } catch (e) {
-        debugPrint('Remote getUserImportedSets error: $e, falling back to local');
+        debugPrint(
+            'Remote getUserImportedSets error: $e, falling back to local');
         // Fall back to local
       }
     }
@@ -1145,7 +1182,8 @@ class DatabaseHelper {
       INNER JOIN user_study_sets us ON s.id = us.study_set_id
       WHERE us.user_id = ?
     ''', [userId]);
-    debugPrint('User $username (ID: $userId) has ${result.length} imported sets:');
+    debugPrint(
+        'User $username (ID: $userId) has ${result.length} imported sets:');
     for (var set in result) {
       debugPrint('- ${set['name']} (ID: ${set['id']})');
     }
@@ -1158,14 +1196,16 @@ class DatabaseHelper {
         String? setName;
         try {
           final db = await database;
-          final res = await db.query('study_sets', where: 'id = ?', whereArgs: [setId]);
+          final res =
+              await db.query('study_sets', where: 'id = ?', whereArgs: [setId]);
           if (res.isNotEmpty) setName = res.first['name'] as String?;
         } catch (_) {}
         if (setName != null) {
           await _remote.removeImportedSet(username, setName).timeout(
             Duration(seconds: 8),
             onTimeout: () {
-              debugPrint('Remote removeImportedSet timed out, falling back to local');
+              debugPrint(
+                  'Remote removeImportedSet timed out, falling back to local');
               throw TimeoutException('removeImportedSet timeout');
             },
           );
@@ -1246,7 +1286,8 @@ class DatabaseHelper {
         return await _remote.getUserPowerups(username).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('Remote getUserPowerups timed out, falling back to local');
+            debugPrint(
+                'Remote getUserPowerups timed out, falling back to local');
             throw TimeoutException('getUserPowerups timeout');
           },
         );
@@ -1276,7 +1317,8 @@ class DatabaseHelper {
         await _remote.purchasePowerup(username, powerupId).timeout(
           Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('Remote purchasePowerup timed out, falling back to local');
+            debugPrint(
+                'Remote purchasePowerup timed out, falling back to local');
             throw TimeoutException('purchasePowerup timeout');
           },
         );

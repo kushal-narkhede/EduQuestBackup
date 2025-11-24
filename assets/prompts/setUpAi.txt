@@ -338,12 +338,12 @@ Each theme has custom background:
 - Forest: forest.jpg
 - Arctic: arctic.jpg
 - Crystal: crystal.jpg
-- Volcano: volcano.jpg
+- Halloween: animated haunted skyline with neon fog
 - Beach: beach-specific UI styling
 - Space: dark cosmic background
 
 ### Text Color Adaptation
-- **Dark Themes** (Forest, Volcano, Space): White text
+- **Dark Themes** (Forest, Halloween, Space): White text
 - **Bright Themes** (Beach, Arctic, Crystal): Dark gray/slate text for headers, white for selected tabs
 - **Forest Theme Special:** Dark slate text for better contrast, bold tab labels
 
@@ -355,7 +355,7 @@ Each theme has custom background:
 
 ### System UI Overlay
 - Dark icon style for bright themes (Beach, Arctic, Crystal)
-- Light icon style for dark themes (Forest, Volcano, Space)
+- Light icon style for dark themes (Forest, Halloween, Space)
 - Transparent status and navigation bars
 
 ---
