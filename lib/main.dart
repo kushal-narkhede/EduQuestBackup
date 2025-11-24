@@ -1653,7 +1653,7 @@ class ThemeCopy {
 
   static String getStoreSubtitle(String theme) {
     if (theme == 'halloween') {
-      return 'Stock up on enchanted curios for nightfall studies';
+      return 'Stock up on enchanted\ncurios for nightfall studies';
     }
     return 'Enhance your learning experience';
   }
@@ -2060,6 +2060,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                               _currentTheme == 'halloween'
                                   ? 'Enter the Haunted Academy'
                                   : 'Welcome to EduQuest',
+                              textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
@@ -2197,7 +2198,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                                   height: 220,
                                   width: 220,
                                   child: Lottie.asset(
-                                    'assets/animation/loadingplane.json',
+                                    'assets/animation/ghostLoader.json',
                                     fit: BoxFit.contain,
                                   ),
                                 ),
@@ -3868,6 +3869,21 @@ class _LearnTabState extends State<LearnTab>
                                       ),
                                     ),
                                   ),
+                                // Edit button moved to top right, only pencil icon
+                                if (!isImported) ...[
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    onPressed: () => _editStudySet(studySet),
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor:
+                                          Colors.orange.withOpacity(0.8),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.all(8),
+                                    ),
+                                    tooltip: 'Edit',
+                                  ),
+                                ],
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -3904,27 +3920,6 @@ class _LearnTabState extends State<LearnTab>
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                // Show edit button only for manually created sets (not imported ones)
-                                if (!isImported) ...[
-                                  ElevatedButton.icon(
-                                    onPressed: () => _editStudySet(studySet),
-                                    icon: const Icon(Icons.edit, size: 18),
-                                    label: const Text('Edit'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          Colors.orange.withOpacity(0.8),
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 10,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                ],
                                 Builder(builder: (context) {
                                   final isSpooky =
                                       widget.currentTheme == 'halloween';

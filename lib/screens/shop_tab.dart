@@ -160,31 +160,36 @@ class _ShopTabState extends State<ShopTab>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                ThemeCopy.getStoreTitle(widget.currentTheme),
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: ThemeColors.getTextColor(
-                                      widget.currentTheme),
-                                  letterSpacing: 0.5,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  ThemeCopy.getStoreTitle(widget.currentTheme),
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: ThemeColors.getTextColor(
+                                        widget.currentTheme),
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                ThemeCopy.getStoreSubtitle(widget.currentTheme),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: ThemeColors.getTextColor(
-                                          widget.currentTheme)
-                                      .withOpacity(0.8),
-                                  fontWeight: FontWeight.w400,
+                                const SizedBox(height: 4),
+                                Text(
+                                  ThemeCopy.getStoreSubtitle(widget.currentTheme),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: ThemeColors.getTextColor(
+                                            widget.currentTheme)
+                                        .withOpacity(0.8),
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.3,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(

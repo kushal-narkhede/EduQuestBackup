@@ -2000,7 +2000,7 @@ Generate exactly $numberOfQuestions questions for $selectedSubject:
               Opacity(
                 opacity: isQuizActive ? 0.5 : 1.0,
                 child: Container(
-                  height: 320,
+                  height: 250,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     gradient: LinearGradient(
@@ -2479,12 +2479,12 @@ Generate exactly $numberOfQuestions questions for $selectedSubject:
         // Grid of subjects
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.80,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.0,
             ),
             itemCount: availableSubjects.length,
             itemBuilder: (context, index) {
@@ -2551,17 +2551,17 @@ Generate exactly $numberOfQuestions questions for $selectedSubject:
                           ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(6.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Icon section with consistent sizing
                         SizedBox(
-                          height: 48,
+                          height: 36,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: isSelected
@@ -2575,7 +2575,7 @@ Generate exactly $numberOfQuestions questions for $selectedSubject:
                                   : widget.currentTheme == 'beach'
                                       ? ThemeColors.getTextColor('beach')
                                       : Colors.white.withOpacity(0.8),
-                              size: 26, // Fixed size to prevent layout shifts
+                              size: 20, // Reduced size for smaller boxes
                             ),
                           ),
                         ),
@@ -2595,11 +2595,11 @@ Generate exactly $numberOfQuestions questions for $selectedSubject:
                                         : widget.currentTheme == 'beach'
                                             ? ThemeColors.getTextColor('beach')
                                             : Colors.white.withOpacity(0.9),
-                                    fontSize: 10,
+                                    fontSize: 9,
                                     fontWeight: isSelected
                                         ? FontWeight.bold
                                         : FontWeight.w500,
-                                    height: 1.2,
+                                    height: 1.1,
                                   ),
                                   textAlign: TextAlign.center,
                                   maxLines: 2,
