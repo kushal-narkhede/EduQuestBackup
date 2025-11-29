@@ -3893,10 +3893,11 @@ class _MCQManagerState extends State<MCQManager> {
                   Text(
                     apClass['name'],
                     style: TextStyle(
-                      fontSize:
-                          (apClass['name'] == 'AP Environmental Science' ||
-                                  apClass['name'] == 'AP Physics C: Mechanics')
-                              ? 12
+                      fontSize: apClass['name'] == 'AP Environmental Science'
+                          ? 10.5
+                          : (apClass['name'] == 'AP Physics C: Mechanics' ||
+                                  apClass['name'] == 'IB Psychology HL')
+                              ? 11
                               : 16,
                       fontWeight: FontWeight.bold,
                       color: primaryTextColor,

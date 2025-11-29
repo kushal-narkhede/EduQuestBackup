@@ -1096,16 +1096,18 @@ class _HomePageState extends State<HomePage> {
                           messages = state.messages;
                         }
 
-                        // Auto-scroll to bottom when new messages arrive
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (_scrollController.hasClients) {
-                            _scrollController.animateTo(
-                              _scrollController.position.maxScrollExtent,
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeOut,
-                            );
-                          }
-                        });
+                        // Auto-scroll to bottom only when there are messages and not generating
+                        if (messages.isNotEmpty && !_chatBloc.generating) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (_scrollController.hasClients) {
+                              _scrollController.animateTo(
+                                _scrollController.position.maxScrollExtent,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          });
+                        }
 
                         return ListView.builder(
                           controller: _scrollController,
